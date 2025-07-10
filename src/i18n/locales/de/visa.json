@@ -1,0 +1,46 @@
+{
+  "title": "Visa & Immigration Services",
+  "subtitle": "Professionelle Unterstützung für Ihren Weg nach Deutschland",
+  "services": {
+    "consultation": "Visa-Beratung",
+    "translation": "Dokumentenübersetzung",
+    "student": "Studentenvisa",
+    "work": "Arbeitsvisum",
+    "family": "Familienzusammenführung",
+    "express": "Express-Service",
+    "apostille": "Apostille Service",
+    "insurance": "Krankenversicherung"
+  },
+  "features": {
+    "experienced": "Erfahrene Berater",
+    "fastProcessing": "Schnelle Bearbeitung",
+    "legalSupport": "Rechtliche Unterstützung",
+    "documentation": "Vollständige Dokumentation"
+  },
+  "card": {
+    "popular": "Beliebt",
+    "price": "Preis",
+    "duration": "Bearbeitungszeit",
+    "includes": "Leistungen",
+    "bookService": "Service buchen",
+    "learnMore": "Mehr erfahren"
+  },
+  "booking": {
+    "title": "Visa-Service buchen",
+    "selectService": "Service auswählen",
+    "personalInfo": "Persönliche Daten",
+    "documents": "Dokumente",
+    "appointment": "Terminvereinbarung",
+    "payment": "Zahlung"
+  },
+  "process": {
+    "title": "Unser Prozess",
+    "step1": "Kostenlose Beratung",
+    "step2": "Dokumentenprüfung",
+    "step3": "Antragstellung",
+    "step4": "Erfolgreiche Visa-Erteilung"
+  },
+  "currency": "MAD",
+  "currency_name": "Marokkanische Dirham",
+  "price_format": "{amount} MAD"
+}

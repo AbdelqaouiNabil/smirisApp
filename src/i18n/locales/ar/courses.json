@@ -1,0 +1,58 @@
+{
+  "title": "دورات اللغة الألمانية",
+  "subtitle": "اعثر على دورة الألمانية المثالية لهدفك",
+  "filters": {
+    "level": "مستوى اللغة",
+    "city": "المدينة",
+    "price": "نطاق السعر",
+    "duration": "مدة الدورة",
+    "type": "نوع الدورة",
+    "schedule": "الجدول الزمني"
+  },
+  "levels": {
+    "A1": "A1 - مبتدئ",
+    "A2": "A2 - أساسي",
+    "B1": "B1 - متوسط",
+    "B2": "B2 - متوسط جيد",
+    "C1": "C1 - متقدم",
+    "C2": "C2 - أصلي"
+  },
+  "types": {
+    "intensive": "دورة مكثفة",
+    "business": "ألمانية الأعمال",
+    "medical": "ألمانية طبية",
+    "online": "دورة أونلاين",
+    "evening": "دورة مسائية",
+    "weekend": "دورة نهاية الأسبوع"
+  },
+  "card": {
+    "duration": "المدة",
+    "schedule": "الجدول الزمني",
+    "students": "المشاركون",
+    "startDate": "بداية الدورة",
+    "features": "محتوى الدورة",
+    "price": "السعر",
+    "bookNow": "احجز الآن",
+    "available": "متاح",
+    "waitlist": "قائمة الانتظار",
+    "soldOut": "مكتمل"
+  },
+  "details": {
+    "description": "وصف الدورة",
+    "objectives": "أهداف التعلم",
+    "prerequisites": "المتطلبات",
+    "materials": "مواد الدورة",
+    "certificate": "الشهادة",
+    "instructor": "المدرس"
+  },
+  "booking": {
+    "title": "حجز الدورة",
+    "personalInfo": "البيانات الشخصية",
+    "courseDetails": "تفاصيل الدورة",
+    "payment": "الدفع",
+    "confirmation": "التأكيد"
+  },
+  "currency": "درهم",
+  "currency_name": "الدرهم المغربي",
+  "price_format": "{amount} درهم"
+}

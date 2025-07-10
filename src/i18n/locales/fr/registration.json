@@ -1,0 +1,75 @@
+{
+  "studentRegistration": {
+    "title": "Inscription étudiant",
+    "subtitle": "Rejoignez Germansphere et commencez votre voyage vers l'Allemagne",
+    "step1": {
+      "title": "Informations de base",
+      "subtitle": "Étape 1 sur 3",
+      "email": "Adresse e-mail",
+      "familyName": "Nom de famille (en lettres françaises)",
+      "firstName": "Prénom",
+      "city": "Ville",
+      "password": "Mot de passe",
+      "confirmPassword": "Confirmer le mot de passe",
+      "selectCity": "Choisir la ville"
+    },
+    "step2": {
+      "title": "Contact et éducation",
+      "subtitle": "Étape 2 sur 3",
+      "whatsapp": "Numéro WhatsApp",
+      "bestCallTime": "Meilleur moment d'appel",
+      "educationLevel": "Niveau d'études",
+      "baccalaureatGrade": "Note du Baccalauréat",
+      "selectTime": "Choisir l'heure",
+      "selectLevel": "Choisir le niveau"
+    },
+    "step3": {
+      "title": "Détails d'études et financement",
+      "subtitle": "Étape 3 sur 3",
+      "interestedOffer": "Offre qui vous intéresse",
+      "studyBudget": "Budget d'études en Allemagne",
+      "howFoundUs": "Comment nous avez-vous connus",
+      "studyFinancing": "Mode de financement",
+      "currentLanguageLevel": "Niveau actuel d'allemand",
+      "selectOffer": "Choisir l'offre",
+      "selectBudget": "Choisir le budget",
+      "selectSource": "Choisir la source",
+      "selectFinancing": "Choisir le financement",
+      "selectLanguageLevel": "Choisir le niveau"
+    },
+    "navigation": {
+      "previous": "Précédent",
+      "next": "Suivant",
+      "finish": "Terminer l'inscription",
+      "submitting": "Inscription..."
+    },
+    "validation": {
+      "emailRequired": "L'adresse e-mail est requise",
+      "familyNameRequired": "Le nom de famille est requis",
+      "firstNameRequired": "Le prénom est requis",
+      "cityRequired": "La ville est requise",
+      "passwordMinLength": "Le mot de passe doit contenir au moins 6 caractères",
+      "passwordMismatch": "Les mots de passe ne correspondent pas",
+      "whatsappRequired": "Le numéro WhatsApp est requis",
+      "callTimeRequired": "L'heure d'appel est requise",
+      "educationRequired": "Le niveau d'études est requis",
+      "gradeRequired": "La note du Baccalauréat est requise",
+      "offerRequired": "L'offre intéressante est requise",
+      "budgetRequired": "Le budget est requis",
+      "sourceRequired": "La source de découverte est requise",
+      "financingRequired": "Le mode de financement est requis",
+      "languageLevelRequired": "Le niveau de langue est requis"
+    },
+    "success": {
+      "title": "Inscription réussie!",
+      "description": "Bienvenue chez Germansphere"
+    },
+    "error": {
+      "title": "Erreur d'inscription",
+      "description": "Veuillez réessayer",
+      "unexpected": "Une erreur inattendue s'est produite"
+    },
+    "alreadyHaveAccount": "Vous avez déjà un compte ?",
+    "login": "Se connecter"
+  }
+}

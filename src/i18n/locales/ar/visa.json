@@ -1,0 +1,46 @@
+{
+  "title": "خدمات التأشيرة والهجرة",
+  "subtitle": "دعم مهني لطريقك إلى ألمانيا",
+  "services": {
+    "consultation": "استشارة التأشيرة",
+    "translation": "ترجمة الوثائق",
+    "student": "تأشيرة طلابية",
+    "work": "تأشيرة عمل",
+    "family": "لم الشمل العائلي",
+    "express": "خدمة سريعة",
+    "apostille": "خدمة الأبوستيل",
+    "insurance": "التأمين الصحي"
+  },
+  "features": {
+    "experienced": "مستشارون ذوو خبرة",
+    "fastProcessing": "معالجة سريعة",
+    "legalSupport": "دعم قانوني",
+    "documentation": "توثيق شامل"
+  },
+  "card": {
+    "popular": "شائع",
+    "price": "السعر",
+    "duration": "وقت المعالجة",
+    "includes": "الخدمات",
+    "bookService": "احجز الخدمة",
+    "learnMore": "اعرف المزيد"
+  },
+  "booking": {
+    "title": "حجز خدمة التأشيرة",
+    "selectService": "اختر الخدمة",
+    "personalInfo": "البيانات الشخصية",
+    "documents": "الوثائق",
+    "appointment": "حجز موعد",
+    "payment": "الدفع"
+  },
+  "process": {
+    "title": "عمليتنا",
+    "step1": "استشارة مجانية",
+    "step2": "فحص الوثائق",
+    "step3": "تقديم الطلب",
+    "step4": "الحصول على التأشيرة بنجاح"
+  },
+  "currency": "درهم",
+  "currency_name": "الدرهم المغربي",
+  "price_format": "{amount} درهم"
+}

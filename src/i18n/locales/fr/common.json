@@ -1,0 +1,81 @@
+{
+  "buttons": {
+    "login": "Se connecter",
+    "register": "S'inscrire",
+    "logout": "Se déconnecter",
+    "book": "Réserver",
+    "bookNow": "Réserver maintenant",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "reset": "Réinitialiser",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "continue": "Continuer",
+    "submit": "Soumettre",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "view": "Voir",
+    "details": "Détails",
+    "contact": "Contact",
+    "callNow": "Appeler maintenant",
+    "sendEmail": "Envoyer un e-mail",
+    "sendMessage": "Envoyer un message",
+    "close": "Fermer"
+  },
+  "forms": {
+    "name": "Nom",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "phone": "Téléphone",
+    "date": "Date",
+    "time": "Heure",
+    "duration": "Durée",
+    "subject": "Sujet",
+    "notes": "Notes",
+    "message": "Message",
+    "address": "Adresse",
+    "city": "Ville",
+    "country": "Pays"
+  },
+  "status": {
+    "active": "Actif",
+    "inactive": "Inactif",
+    "pending": "En attente",
+    "confirmed": "Confirmé",
+    "cancelled": "Annulé",
+    "completed": "Terminé",
+    "available": "Disponible",
+    "unavailable": "Non disponible",
+    "paid": "Payé",
+    "unpaid": "Non payé"
+  },
+  "time": {
+    "minutes": "Minutes",
+    "hours": "Heures",
+    "days": "Jours",
+    "weeks": "Semaines",
+    "months": "Mois",
+    "years": "Années",
+    "today": "Aujourd'hui",
+    "tomorrow": "Demain",
+    "yesterday": "Hier"
+  },
+  "currency": "MAD",
+  "validation": {
+    "required": "Ce champ est requis",
+    "email": "Veuillez entrer une adresse e-mail valide",
+    "password": "Le mot de passe doit contenir au moins 6 caractères",
+    "passwordMatch": "Les mots de passe ne correspondent pas",
+    "phone": "Veuillez entrer un numéro de téléphone valide"
+  },
+  "messages": {
+    "success": "Succès!",
+    "error": "Une erreur s'est produite",
+    "loading": "Chargement...",
+    "noResults": "Aucun résultat trouvé",
+    "tryAgain": "Veuillez réessayer"
+  },
+  "currency_name": "Dirham Marocain",
+  "price_format": "{amount} MAD"
+}

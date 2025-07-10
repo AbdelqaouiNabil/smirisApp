@@ -1,0 +1,81 @@
+{
+  "buttons": {
+    "login": "Anmelden",
+    "register": "Registrieren",
+    "logout": "Abmelden",
+    "book": "Buchen",
+    "bookNow": "Jetzt buchen",
+    "search": "Suchen",
+    "filter": "Filter",
+    "reset": "Zurücksetzen",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "continue": "Weiter",
+    "submit": "Absenden",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "view": "Anzeigen",
+    "details": "Details",
+    "contact": "Kontakt",
+    "callNow": "Jetzt anrufen",
+    "sendEmail": "E-Mail senden",
+    "sendMessage": "Nachricht senden",
+    "close": "Schließen"
+  },
+  "forms": {
+    "name": "Name",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "confirmPassword": "Passwort bestätigen",
+    "phone": "Telefon",
+    "date": "Datum",
+    "time": "Uhrzeit",
+    "duration": "Dauer",
+    "subject": "Thema",
+    "notes": "Notizen",
+    "message": "Nachricht",
+    "address": "Adresse",
+    "city": "Stadt",
+    "country": "Land"
+  },
+  "status": {
+    "active": "Aktiv",
+    "inactive": "Inaktiv",
+    "pending": "Ausstehend",
+    "confirmed": "Bestätigt",
+    "cancelled": "Storniert",
+    "completed": "Abgeschlossen",
+    "available": "Verfügbar",
+    "unavailable": "Nicht verfügbar",
+    "paid": "Bezahlt",
+    "unpaid": "Unbezahlt"
+  },
+  "time": {
+    "minutes": "Minuten",
+    "hours": "Stunden",
+    "days": "Tage",
+    "weeks": "Wochen",
+    "months": "Monate",
+    "years": "Jahre",
+    "today": "Heute",
+    "tomorrow": "Morgen",
+    "yesterday": "Gestern"
+  },
+  "currency": "MAD",
+  "validation": {
+    "required": "Dieses Feld ist erforderlich",
+    "email": "Bitte geben Sie eine gültige E-Mail-Adresse ein",
+    "password": "Passwort muss mindestens 6 Zeichen haben",
+    "passwordMatch": "Passwörter stimmen nicht überein",
+    "phone": "Bitte geben Sie eine gültige Telefonnummer ein"
+  },
+  "messages": {
+    "success": "Erfolgreich!",
+    "error": "Ein Fehler ist aufgetreten",
+    "loading": "Wird geladen...",
+    "noResults": "Keine Ergebnisse gefunden",
+    "tryAgain": "Bitte versuchen Sie es erneut"
+  },
+  "currency_name": "Marokkanische Dirham",
+  "price_format": "{amount} MAD"
+}

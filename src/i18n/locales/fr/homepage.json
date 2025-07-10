@@ -1,0 +1,125 @@
+{
+  "hero": {
+    "title": "Votre pont vers l'apprentissage de l'allemand au Maroc",
+    "subtitle": "🇩🇪 SmirisGermany - Votre partenaire pour la langue allemande",
+    "description": "Avec SmirisGermany, trouvez la meilleure école de langues, des tuteurs qualifiés et des services de visa complets - tout pour votre succès en allemand",
+    "cta": "Découvrir les écoles",
+    "learnMore": "En savoir plus"
+  },
+  "features": {
+    "title": "Pourquoi SmirisGermany?",
+    "subtitle": "Votre plateforme professionnelle pour apprendre l'allemand au Maroc",
+    "items": {
+      "schools": {
+        "title": "Écoles de langues certifiées",
+        "description": "Écoles partenaires avec les plus hauts standards de qualité et certifications reconnues"
+      },
+      "tutors": {
+        "title": "Professeurs d'allemand privés",
+        "description": "Locuteurs natifs qualifiés pour un enseignement individuel à votre rythme"
+      },
+      "visa": {
+        "title": "Visa et Immigration",
+        "description": "Conseil professionnel et assistance pour toutes les questions de visa"
+      },
+      "support": {
+        "title": "Support 24/7",
+        "description": "Notre équipe germanophone est à votre disposition à tout moment"
+      }
+    }
+  },
+  "stats": {
+    "students": "Étudiants satisfaits",
+    "schools": "Écoles partenaires",
+    "tutors": "Tuteurs qualifiés",
+    "success": "Taux de réussite"
+  },
+  "privateTutors": {
+    "title": "Professeurs d'allemand privés",
+    "subtitle": "Cours individuels avec des locuteurs natifs expérimentés",
+    "features": {
+      "flexible": "Horaires flexibles",
+      "personalized": "Programme personnalisé",
+      "native": "Locuteurs natifs",
+      "online": "En ligne et en présentiel"
+    },
+    "cta": "Découvrir les tuteurs"
+  },
+  "trustIndicators": {
+    "visaSuccess": "1000+ demandes de visa réussies",
+    "certified": "Écoles de langues certifiées",
+    "personal": "Accompagnement personnel"
+  },
+  "testimonials": {
+    "title": "Ce que disent nos étudiants",
+    "subtitle": "Histoires de réussite de notre communauté",
+    "items": {
+      "ahmed": {
+        "name": "Ahmed El Mansouri",
+        "role": "Étudiant, A1 → B2",
+        "text": "Grâce à SmirisGermany, j'ai obtenu mon certificat B2 en seulement 8 mois et je travaille maintenant à Berlin!"
+      },
+      "fatima": {
+        "name": "Fatima Benali",
+        "role": "Médecin",
+        "text": "Les cours d'allemand médical m'ont aidée à obtenir mon autorisation d'exercer en Allemagne."
+      },
+      "youssef": {
+        "name": "Youssef Khadiri",
+        "role": "Ingénieur",
+        "text": "Excellente préparation pour mes études en Allemagne. Hautement recommandé!"
+      }
+    }
+  },
+  "services": {
+    "title": "Nos Services",
+    "subtitle": "Tout ce dont vous avez besoin pour votre succès en Allemagne",
+    "germanCourses": {
+      "title": "Cours d'allemand",
+      "description": "De A1 à C2 - tous les niveaux de langue avec des professeurs certifiés et des méthodes d'enseignement modernes.",
+      "features": [
+        "Cours intensifs et cours du soir",
+        "Petits groupes pour un apprentissage optimal",
+        "Certificats reconnus internationalement",
+        "Matériel d'apprentissage moderne"
+      ],
+      "cta": "Découvrir les cours"
+    },
+    "privateTutoring": {
+      "title": "Cours privés",
+      "description": "Cours d'allemand individuels avec des professeurs privés expérimentés - flexibles et personnels.",
+      "features": [
+        "Horaires entièrement flexibles",
+        "Programme d'apprentissage individuel",
+        "Locuteurs natifs qualifiés",
+        "En ligne et en présentiel"
+      ],
+      "cta": "Trouver un tuteur"
+    },
+    "visaServices": {
+      "title": "Services de visa",
+      "description": "Support professionnel pour votre demande de visa - de la consultation à l'obtention réussie.",
+      "features": [
+        "Consultation visa gratuite",
+        "Assistance pour la documentation",
+        "Traduction de documents",
+        "Accompagnement complet"
+      ],
+      "cta": "Services de visa"
+    }
+  },
+  "finalCta": {
+    "title": "Prêt pour votre rêve allemand?",
+    "subtitle": "Inscrivez-vous aujourd'hui et commencez votre voyage vers l'Allemagne avec notre équipe d'experts.",
+    "cta": "Commencer maintenant"
+  },
+  "cta": {
+    "title": "Prêt pour votre chemin vers l'allemand parfait?",
+    "subtitle": "Commencez votre voyage allemand aujourd'hui avec SmirisGermany",
+    "primary": "Trouver une école",
+    "secondary": "Réserver une consultation"
+  },
+  "currency": "MAD",
+  "currency_name": "Dirham Marocain",
+  "price_format": "{amount} MAD"
+}

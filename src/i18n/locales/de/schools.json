@@ -1,0 +1,52 @@
+{
+  "title": "Deutsche Sprachschulen & Kurse",
+  "subtitle": "Zertifizierte Sprachschulen und Kurse mit höchsten Qualitätsstandards",
+  "tabs": {
+    "schools": "Sprachschulen",
+    "courses": "Kurse"
+  },
+  "filters": {
+    "selectCity": "Stadt auswählen",
+    "allCities": "Alle Städte",
+    "found": "gefunden"
+  },
+  "schoolCard": {
+    "teachers": "Lehrer",
+    "studentsPerYear": "Studenten/Jahr",
+    "certifications": "Zertifizierungen",
+    "features": "Ausstattung",
+    "more": "mehr",
+    "callNow": "Jetzt anrufen",
+    "sendEmail": "E-Mail senden",
+    "viewDetails": "Details ansehen"
+  },
+  "courseCard": {
+    "duration": "Dauer",
+    "participants": "Teilnehmer",
+    "schedule": "Zeitplan",
+    "startDate": "Start",
+    "available": "Verfügbar",
+    "soldOut": "Ausgebucht",
+    "bookNow": "Jetzt buchen"
+  },
+  "schoolDetails": {
+    "about": "Über die Schule",
+    "certifications": "Zertifizierungen & Anerkennungen",
+    "statistics": "Kennzahlen",
+    "experiencedTeachers": "Erfahrene Lehrer",
+    "studentsPerYear": "Studenten pro Jahr",
+    "founded": "Gegründet",
+    "yearsExperience": "Jahre Erfahrung",
+    "facilities": "Ausstattung & Features",
+    "contact": "Kontakt",
+    "callNow": "Jetzt anrufen",
+    "sendEmail": "E-Mail senden"
+  },
+  "messages": {
+    "noSchools": "Keine Schulen gefunden",
+    "tryDifferentCity": "Versuchen Sie es mit einer anderen Stadt"
+  },
+  "currency": "MAD",
+  "currency_name": "Marokkanische Dirham",
+  "price_format": "{amount} MAD"
+}

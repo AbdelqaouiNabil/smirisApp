@@ -1,0 +1,38 @@
+{
+  "brand": "Germansphere",
+  "tutors": "المدرسون",
+  "schools": "المدارس والدورات",
+  "visa": "خدمات التأشيرة",
+  "dashboard": "لوحة التحكم",
+  "login": "تسجيل الدخول",
+  "logout": "تسجيل الخروج",
+  "language": {
+    "switch": "تغيير اللغة",
+    "german": "Deutsch",
+    "arabic": "العربية",
+    "current": "اللغة الحالية"
+  },
+  "menu": {
+    "home": "الرئيسية",
+    "tutors": "المدرسون",
+    "schools": "المدارس والدورات",
+    "visa": "خدمات التأشيرة",
+    "dashboard": "لوحة التحكم",
+    "profile": "الملف الشخصي",
+    "settings": "الإعدادات"
+  },
+  "user": {
+    "welcome": "مرحباً",
+    "myAccount": "حسابي",
+    "myBookings": "حجوزاتي",
+    "myProgress": "تقدمي",
+    "logout": "تسجيل الخروج"
+  },
+  "mobile": {
+    "menu": "القائمة",
+    "close": "إغلاق"
+  },
+  "currency": "درهم",
+  "currency_name": "الدرهم المغربي",
+  "price_format": "{amount} درهم"
+}

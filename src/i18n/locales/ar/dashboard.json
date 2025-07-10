@@ -1,0 +1,140 @@
+{
+  "title": "لوحة التحكم",
+  "welcome": "مرحباً بعودتك",
+  "roles": {
+    "student": "طالب",
+    "tutor": "مدرس لغة",
+    "school": "مدرسة لغة",
+    "admin": "مدير"
+  },
+  "tabs": {
+    "overview": "نظرة عامة",
+    "bookings": "مواعيدي",
+    "courses": "دوراتي",
+    "progress": "تقدم التعلم",
+    "calendar": "التقويم",
+    "students": "طلابي",
+    "earnings": "الأرباح",
+    "availability": "التوفر",
+    "analytics": "التحليلات",
+    "users": "المستخدمون",
+    "revenue": "الإيرادات",
+    "settings": "الإعدادات"
+  },
+  "student": {
+    "stats": {
+      "activeCourses": "دورات نشطة",
+      "certificates": "شهادات",
+      "upcomingLessons": "دروس قادمة",
+      "totalInvested": "مستثمر"
+    },
+    "recentActivity": "النشاط الأخير",
+    "upcomingLessons": "الدروس القادمة",
+    "courseProgress": "تقدم الدورة"
+  },
+  "tutor": {
+    "todaysLessons": "دروس اليوم",
+    "students": "الطلاب",
+    "weeklyEarnings": "الأرباح الأسبوعية",
+    "nextLesson": "الدرس التالي",
+    "earnings": {
+      "title": "نظرة عامة على الأرباح",
+      "daily": "يومي",
+      "weekly": "أسبوعي",
+      "monthly": "شهري",
+      "total": "المجموع"
+    },
+    "availability": {
+      "title": "إدارة التوفر",
+      "weeklySchedule": "التوفر الأسبوعي",
+      "todayAvailable": "متاح اليوم",
+      "bookingStats": "إحصائيات الحجز",
+      "bookingRate": "معدل الحجز",
+      "popularTime": "الوقت الشائع"
+    }
+  },
+  "school": {
+    "overview": {
+      "activeCourses": "دورات نشطة",
+      "enrolledStudents": "طلاب مسجلون",
+      "availableSpots": "أماكن متاحة",
+      "monthlyRevenue": "الإيرادات الشهرية",
+      "newThisWeek": "جديد هذا الأسبوع",
+      "thisWeek": "هذا الأسبوع",
+      "vsLastMonth": "مقابل الشهر الماضي"
+    },
+    "courseManagement": {
+      "title": "إدارة الدورات",
+      "addNewCourse": "إضافة دورة جديدة",
+      "activeCourses": "دورات نشطة",
+      "students": "المشاركون",
+      "maxStudents": "الحد الأقصى",
+      "startDate": "البداية",
+      "edit": "تعديل",
+      "participants": "المشاركون",
+      "details": "التفاصيل",
+      "statistics": "إحصائيات الدورة",
+      "utilization": "معدل الاستخدام",
+      "spotsOccupied": "أماكن مشغولة",
+      "waitlist": "قائمة الانتظار",
+      "peopleWaiting": "أشخاص في قائمة الانتظار",
+      "nextStart": "بداية الدورة التالية"
+    },
+    "studentManagement": {
+      "title": "إدارة الطلاب",
+      "name": "الاسم",
+      "course": "الدورة",
+      "level": "المستوى",
+      "status": "الحالة",
+      "payment": "الدفع",
+      "actions": "الإجراءات",
+      "active": "نشط",
+      "waitlist": "قائمة الانتظار",
+      "paid": "مدفوع",
+      "pending": "معلق",
+      "partial": "دفعة مقدمة",
+      "details": "التفاصيل",
+      "contact": "اتصال"
+    },
+    "revenue": {
+      "title": "الإيرادات ودفع CMI",
+      "monthlyRevenue": "الإيرادات الشهرية",
+      "cmiPayments": "مدفوعات CMI",
+      "totalRevenue": "من إجمالي الإيرادات",
+      "cmiIntegration": "تكامل دفع CMI",
+      "cmiStatus": "حالة CMI",
+      "active": "نشط",
+      "merchantId": "معرف التاجر",
+      "processedPayments": "المدفوعات المعالجة",
+      "successRate": "معدل النجاح",
+      "manageCMI": "إدارة إعدادات CMI",
+      "recentTransactions": "المعاملات الأخيرة",
+      "date": "التاريخ",
+      "student": "الطالب",
+      "amount": "المبلغ",
+      "method": "الطريقة",
+      "paid": "مدفوع",
+      "partial": "دفعة مقدمة"
+    }
+  },
+  "admin": {
+    "systemOverview": "نظرة عامة على النظام",
+    "newRegistrationsToday": "تسجيلات جديدة اليوم",
+    "activeBookings": "حجوزات نشطة"
+  },
+  "recentActivities": {
+    "title": "النشاطات الأخيرة"
+  },
+  "quickActions": {
+    "title": "إجراءات سريعة",
+    "bookNewCourse": "احجز دورة جديدة",
+    "browseCourses": "تصفح عروض الدورات لدينا",
+    "bookVisaConsultation": "احجز استشارة تأشيرة",
+    "professionalSupport": "دعم مهني",
+    "contactSupport": "اتصل بالدعم",
+    "weAreHere": "نحن هنا لمساعدتك"
+  },
+  "currency": "درهم",
+  "currency_name": "الدرهم المغربي",
+  "price_format": "{amount} درهم"
+}

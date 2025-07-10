@@ -1,0 +1,75 @@
+{
+  "title": "Tuteurs d'allemand privés",
+  "subtitle": "Trouvez le professeur d'allemand parfait pour des cours individuels",
+  "filters": {
+    "search": "Recherche",
+    "searchPlaceholder": "Tuteur ou spécialisation...",
+    "specialization": "Spécialisation",
+    "city": "Ville",
+    "priceRange": "Gamme de prix",
+    "availability": "Disponibilité",
+    "rating": "Évaluation",
+    "reset": "Réinitialiser"
+  },
+  "specializations": {
+    "conversation": "Conversation",
+    "business": "Allemand des affaires",
+    "grammar": "Grammaire",
+    "testPrep": "Préparation aux examens",
+    "medical": "Allemand médical",
+    "literature": "Littérature allemande",
+    "beginners": "Débutants",
+    "advanced": "Avancé"
+  },
+  "priceRanges": {
+    "under25": "Moins de 25€",
+    "25-35": "25€ - 35€",
+    "over35": "Plus de 35€"
+  },
+  "card": {
+    "hourlyRate": "par heure",
+    "rating": "Évaluation",
+    "reviews": "avis",
+    "lessons": "cours",
+    "onlineOnly": "En ligne uniquement",
+    "bookLesson": "Réserver un cours",
+    "viewProfile": "Voir le profil"
+  },
+  "profile": {
+    "about": "À propos",
+    "teachingStyle": "Style d'enseignement",
+    "education": "Formation et expérience",
+    "specializations": "Spécialisations",
+    "languages": "Langues",
+    "prices": "Tarifs",
+    "singleLesson": "Cours unique",
+    "packages": "Forfaits (moins cher)",
+    "availability": "Disponibilité cette semaine",
+    "notAvailable": "Non disponible",
+    "bookNow": "Réserver maintenant",
+    "sendMessage": "Envoyer un message"
+  },
+  "booking": {
+    "title": "Réserver un cours",
+    "selectDate": "Sélectionner la date",
+    "selectTime": "Sélectionner l'heure",
+    "availableTime": "Choisir un créneau disponible",
+    "duration": "Durée",
+    "minutes": "minutes",
+    "standard": "standard",
+    "subject": "Sujet du cours",
+    "subjectPlaceholder": "ex: pratique de conversation, grammaire...",
+    "notes": "Notes supplémentaires",
+    "notesPlaceholder": "Demandes spéciales ou questions...",
+    "totalPrice": "Prix total",
+    "confirmBooking": "Confirmer la réservation"
+  },
+  "messages": {
+    "bookingSuccess": "Réservation réussie!",
+    "noTutors": "Aucun tuteur trouvé",
+    "tryDifferentFilters": "Essayez différents filtres"
+  },
+  "currency": "MAD",
+  "currency_name": "Dirham Marocain",
+  "price_format": "{amount} MAD"
+}

@@ -1,0 +1,58 @@
+{
+  "title": "Cours de langue allemande",
+  "subtitle": "Trouvez le cours d'allemand parfait pour votre objectif",
+  "filters": {
+    "level": "Niveau de langue",
+    "city": "Ville",
+    "price": "Gamme de prix",
+    "duration": "Durée du cours",
+    "type": "Type de cours",
+    "schedule": "Horaire"
+  },
+  "levels": {
+    "A1": "A1 - Débutant",
+    "A2": "A2 - Élémentaire",
+    "B1": "B1 - Intermédiaire",
+    "B2": "B2 - Intermédiaire supérieur",
+    "C1": "C1 - Avancé",
+    "C2": "C2 - Maîtrise"
+  },
+  "types": {
+    "intensive": "Cours intensif",
+    "business": "Allemand des affaires",
+    "medical": "Allemand médical",
+    "online": "Cours en ligne",
+    "evening": "Cours du soir",
+    "weekend": "Cours de week-end"
+  },
+  "card": {
+    "duration": "Durée",
+    "schedule": "Horaire",
+    "students": "Participants",
+    "startDate": "Début du cours",
+    "features": "Contenu du cours",
+    "price": "Prix",
+    "bookNow": "Réserver maintenant",
+    "available": "Disponible",
+    "waitlist": "Liste d'attente",
+    "soldOut": "Complet"
+  },
+  "details": {
+    "description": "Description du cours",
+    "objectives": "Objectifs d'apprentissage",
+    "prerequisites": "Prérequis",
+    "materials": "Matériaux du cours",
+    "certificate": "Certificat",
+    "instructor": "Instructeur"
+  },
+  "booking": {
+    "title": "Réservation de cours",
+    "personalInfo": "Informations personnelles",
+    "courseDetails": "Détails du cours",
+    "payment": "Paiement",
+    "confirmation": "Confirmation"
+  },
+  "currency": "MAD",
+  "currency_name": "Dirham Marocain",
+  "price_format": "{amount} MAD"
+}

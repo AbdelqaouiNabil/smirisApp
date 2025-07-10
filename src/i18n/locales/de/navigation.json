@@ -1,0 +1,32 @@
+{
+  "brand": "Germansphere",
+  "menu": {
+    "home": "Startseite",
+    "tutors": "Tutoren",
+    "schools": "Schulen & Kurse",
+    "visa": "Visa Services",
+    "dashboard": "Dashboard",
+    "profile": "Profil",
+    "settings": "Einstellungen"
+  },
+  "language": {
+    "switch": "Sprache wechseln",
+    "german": "Deutsch",
+    "arabic": "العربية",
+    "current": "Aktuelle Sprache"
+  },
+  "user": {
+    "welcome": "Willkommen",
+    "myAccount": "Mein Account",
+    "myBookings": "Meine Buchungen",
+    "myProgress": "Mein Fortschritt",
+    "logout": "Abmelden"
+  },
+  "mobile": {
+    "menu": "Menü",
+    "close": "Schließen"
+  },
+  "currency": "MAD",
+  "currency_name": "Marokkanische Dirham",
+  "price_format": "{amount} MAD"
+}

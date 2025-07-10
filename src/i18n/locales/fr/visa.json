@@ -1,0 +1,46 @@
+{
+  "title": "Services de visa et d'immigration",
+  "subtitle": "Assistance professionnelle pour votre chemin vers l'Allemagne",
+  "services": {
+    "consultation": "Consultation visa",
+    "translation": "Traduction de documents",
+    "student": "Visa étudiant",
+    "work": "Visa de travail",
+    "family": "Regroupement familial",
+    "express": "Service express",
+    "apostille": "Service d'apostille",
+    "insurance": "Assurance santé"
+  },
+  "features": {
+    "experienced": "Conseillers expérimentés",
+    "fastProcessing": "Traitement rapide",
+    "legalSupport": "Support juridique",
+    "documentation": "Documentation complète"
+  },
+  "card": {
+    "popular": "Populaire",
+    "price": "Prix",
+    "duration": "Délai de traitement",
+    "includes": "Services inclus",
+    "bookService": "Réserver le service",
+    "learnMore": "En savoir plus"
+  },
+  "booking": {
+    "title": "Réserver un service de visa",
+    "selectService": "Sélectionner le service",
+    "personalInfo": "Informations personnelles",
+    "documents": "Documents",
+    "appointment": "Rendez-vous",
+    "payment": "Paiement"
+  },
+  "process": {
+    "title": "Notre processus",
+    "step1": "Consultation gratuite",
+    "step2": "Vérification des documents",
+    "step3": "Soumission de la demande",
+    "step4": "Obtention réussie du visa"
+  },
+  "currency": "MAD",
+  "currency_name": "Dirham Marocain",
+  "price_format": "{amount} MAD"
+}

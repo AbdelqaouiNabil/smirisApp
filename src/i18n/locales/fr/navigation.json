@@ -1,0 +1,38 @@
+{
+  "brand": "Germansphere",
+  "tutors": "Tuteurs",
+  "schools": "Écoles & Cours",
+  "visa": "Services de visa",
+  "dashboard": "Tableau de bord",
+  "login": "Se connecter",
+  "logout": "Se déconnecter",
+  "language": {
+    "switch": "Changer de langue",
+    "french": "Français",
+    "arabic": "العربية",
+    "current": "Langue actuelle"
+  },
+  "menu": {
+    "home": "Accueil",
+    "tutors": "Tuteurs",
+    "schools": "Écoles & Cours",
+    "visa": "Services de visa",
+    "dashboard": "Tableau de bord",
+    "profile": "Profil",
+    "settings": "Paramètres"
+  },
+  "user": {
+    "welcome": "Bienvenue",
+    "myAccount": "Mon compte",
+    "myBookings": "Mes réservations",
+    "myProgress": "Mes progrès",
+    "logout": "Se déconnecter"
+  },
+  "mobile": {
+    "menu": "Menu",
+    "close": "Fermer"
+  },
+  "currency": "MAD",
+  "currency_name": "Dirham Marocain",
+  "price_format": "{amount} MAD"
+}

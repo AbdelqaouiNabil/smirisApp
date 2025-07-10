@@ -1,0 +1,75 @@
+{
+  "title": "مدرسو ألمانية خصوصيون",
+  "subtitle": "اعثر على مدرس الألمانية المثالي للدروس الفردية",
+  "filters": {
+    "search": "بحث",
+    "searchPlaceholder": "مدرس أو تخصص...",
+    "specialization": "التخصص",
+    "city": "المدينة",
+    "priceRange": "نطاق السعر",
+    "availability": "التوفر",
+    "rating": "التقييم",
+    "reset": "إعادة تعيين"
+  },
+  "specializations": {
+    "conversation": "المحادثة",
+    "business": "ألمانية الأعمال",
+    "grammar": "القواعد",
+    "testPrep": "إعداد الامتحانات",
+    "medical": "ألمانية طبية",
+    "literature": "الأدب الألماني",
+    "beginners": "المبتدئين",
+    "advanced": "متقدم"
+  },
+  "priceRanges": {
+    "under25": "أقل من 25€",
+    "25-35": "25€ - 35€",
+    "over35": "أكثر من 35€"
+  },
+  "card": {
+    "hourlyRate": "في الساعة",
+    "rating": "التقييم",
+    "reviews": "التقييمات",
+    "lessons": "الدروس",
+    "onlineOnly": "أونلاين فقط",
+    "bookLesson": "احجز درس",
+    "viewProfile": "عرض الملف الشخصي"
+  },
+  "profile": {
+    "about": "عني",
+    "teachingStyle": "أسلوب التدريس",
+    "education": "التعليم والخبرة",
+    "specializations": "التخصصات",
+    "languages": "اللغات",
+    "prices": "الأسعار",
+    "singleLesson": "درس واحد",
+    "packages": "باقات (أرخص)",
+    "availability": "التوفر هذا الأسبوع",
+    "notAvailable": "غير متاح",
+    "bookNow": "احجز الآن",
+    "sendMessage": "إرسال رسالة"
+  },
+  "booking": {
+    "title": "حجز درس",
+    "selectDate": "اختر التاريخ",
+    "selectTime": "اختر الوقت",
+    "availableTime": "اختر وقت متاح",
+    "duration": "المدة",
+    "minutes": "دقائق",
+    "standard": "قياسي",
+    "subject": "موضوع الدرس",
+    "subjectPlaceholder": "مثل: ممارسة المحادثة، القواعد...",
+    "notes": "ملاحظات إضافية",
+    "notesPlaceholder": "طلبات خاصة أو أسئلة...",
+    "totalPrice": "السعر الإجمالي",
+    "confirmBooking": "تأكيد الحجز"
+  },
+  "messages": {
+    "bookingSuccess": "تم الحجز بنجاح!",
+    "noTutors": "لم يتم العثور على مدرسين",
+    "tryDifferentFilters": "جرب فلاتر أخرى"
+  },
+  "currency": "درهم",
+  "currency_name": "الدرهم المغربي",
+  "price_format": "{amount} درهم"
+}

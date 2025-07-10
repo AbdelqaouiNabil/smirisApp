@@ -1,0 +1,655 @@
+import express, { Request, Response } from 'express';
+import { body, query as expressQuery, validationResult } from 'express-validator';
+import { query } from '../database/connection';
+import { authenticateToken, requireTutorOrAdmin, optionalAuth } from '../middleware/auth';
+import { asyncHandler, AppError, validationError } from '../middleware/errorHandler';
+import bcrypt from 'bcryptjs';
+import { generateToken } from '../middleware/auth';
+import multer from 'multer';
+
+const upload = multer({ dest: 'uploads/' });
+
+const router = express.Router();
+
+// Tutor Registration (creates both user and tutor profile)
+router.post(
+  '/register',
+  upload.fields([
+    { name: 'photo', maxCount: 1 },
+    { name: 'cv', maxCount: 1 },
+    { name: 'certificates', maxCount: 10 }
+  ]),
+  [
+    body('firstName')
+      .trim()
+      .isLength({ min: 2, max: 50 })
+      .withMessage('Vorname muss zwischen 2 und 50 Zeichen lang sein'),
+    body('lastName')
+      .trim()
+      .isLength({ min: 2, max: 50 })
+      .withMessage('Nachname muss zwischen 2 und 50 Zeichen lang sein'),
+    body('email')
+      .isEmail()
+      .normalizeEmail()
+      .withMessage('Gültige E-Mail-Adresse erforderlich'),
+    body('phone')
+      .optional()
+      .isMobilePhone('any')
+      .withMessage('Ungültige Telefonnummer'),
+    body('city')
+      .trim()
+      .isLength({ min: 2, max: 100 })
+      .withMessage('Stadt muss zwischen 2 und 100 Zeichen lang sein'),
+    body('teachingExperience')
+      .isInt({ min: 0, max: 50 })
+      .withMessage('Erfahrungsjahre müssen zwischen 0 und 50 liegen'),
+    body('hourlyRate')
+      .isFloat({ min: 0 })
+      .withMessage('Stundensatz muss eine positive Zahl sein'),
+    body('specializations')
+      .isArray()
+      .withMessage('Spezialisierungen müssen ein Array sein'),
+    body('languages')
+      .isArray()
+      .withMessage('Sprachen müssen ein Array sein'),
+    body('qualifications')
+      .isArray()
+      .withMessage('Qualifikationen müssen ein Array sein'),
+    body('preparesForExams')
+      .isArray()
+      .withMessage('Prüfungsvorbereitungen müssen ein Array sein'),
+    body('availableFormats')
+      .isArray()
+      .withMessage('Verfügbare Formate müssen ein Array sein'),
+    body('maxStudentsPerGroup')
+      .isInt({ min: 1, max: 20 })
+      .withMessage('Maximale Studenten pro Gruppe muss zwischen 1 und 20 liegen'),
+    body('teachingPhilosophy')
+      .optional()
+      .trim()
+      .isLength({ max: 1000 })
+      .withMessage('Lehrphilosophie zu lang'),
+    body('termsAccepted')
+      .isBoolean()
+      .withMessage('Bedingungen müssen akzeptiert werden'),
+    body('dataProcessingAccepted')
+      .isBoolean()
+      .withMessage('Datenverarbeitung muss akzeptiert werden')
+  ],
+  asyncHandler(async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      throw validationError('Eingabedaten sind ungültig: ' + errors.array().map(e => e.msg).join(', '));
+    }
+
+    // Handle uploaded files
+    const files = req.files as Record<string, Express.Multer.File[]>;
+    
+    const photo = files?.photo?.[0] || null;
+    const cv = files?.cv?.[0] || null;
+    const certificates = files?.certificates || [];
+
+    // Parse JSON fields sent as strings
+    const specializations = JSON.parse(req.body.specializations || '[]');
+    const languages = JSON.parse(req.body.languages || '[]');
+    const qualifications = JSON.parse(req.body.qualifications || '[]');
+    const preparesForExams = JSON.parse(req.body.preparesForExams || '[]');
+    const availableFormats = JSON.parse(req.body.availableFormats || '[]');
+
+    const {
+      firstName, lastName, email, phone, city, teachingExperience, hourlyRate,
+      maxStudentsPerGroup, teachingPhilosophy, termsAccepted, dataProcessingAccepted
+    } = req.body;
+
+    if (!termsAccepted || !dataProcessingAccepted) {
+      throw new AppError('Bedingungen und Datenverarbeitung müssen akzeptiert werden', 400);
+    }
+
+    // Check if email already exists
+    const existingUser = await query('SELECT id FROM users WHERE email = $1', [email]);
+    if (existingUser.rows.length > 0) {
+      throw new AppError('E-Mail-Adresse ist bereits registriert', 409);
+    }
+
+    // Generate a random password for the user
+    const randomPassword = Math.random().toString(36).slice(-8);
+    const saltRounds = 12;
+    const passwordHash = await bcrypt.hash(randomPassword, saltRounds);
+
+    // Create user
+    const fullName = `${firstName} ${lastName}`;
+    const userResult = await query(
+      `INSERT INTO users (name, email, password_hash, role, phone, location)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, uuid, name, email, role, created_at`,
+      [fullName, email, passwordHash, 'tutor', phone, city]
+    );
+
+    const user = userResult.rows[0];
+
+    // Save all certificate file paths as an array
+    const certificatePaths = certificates.map(file => file.path);
+
+    // Create tutor profile
+    const tutorResult = await query(
+      `INSERT INTO tutors (
+        user_id, bio, experience_years, hourly_rate, currency, specializations,
+        languages, certifications, availability, is_verified, is_available, photo_path, cv_url
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      RETURNING id, user_id, bio, experience_years, hourly_rate, specializations,
+                languages, certifications, rating, review_count, total_students,
+                total_hours, availability, is_verified, created_at, photo_path, cv_url`,
+      [
+        user.id,
+        teachingPhilosophy || '',
+        teachingExperience,
+        hourlyRate,
+        'EUR',
+        specializations,
+        languages,
+        JSON.stringify(certificatePaths),
+        JSON.stringify({ formats: availableFormats, maxStudents: maxStudentsPerGroup, examPrep: preparesForExams }),
+        false, // Not verified initially
+        true,  // Available for bookings
+        photo ? photo.path : null,
+        cv ? cv.path : null
+      ]
+    );
+
+    const tutor = tutorResult.rows[0];
+
+    // TODO: Save certificates file paths if needed
+
+    // Generate token
+    const token = generateToken({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name
+    });
+
+    res.status(201).json({
+      message: 'Tutor-Registrierung erfolgreich',
+      tutor: {
+        ...tutor,
+        name: user.name,
+        email: user.email,
+        location: city
+      },
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      },
+      token,
+      temporaryPassword: randomPassword // Send this to the user via email in production
+    });
+  })
+);
+
+// Alle Tutoren abrufen (öffentlich)
+router.get('/', [
+  optionalAuth,
+  expressQuery('page').optional().isInt({ min: 1 }).withMessage('Ungültige Seitenzahl'),
+  expressQuery('limit').optional().isInt({ min: 1, max: 50 }).withMessage('Ungültiges Limit'),
+  expressQuery('min_rate').optional().isFloat({ min: 0 }).withMessage('Ungültiger Mindestpreis'),
+  expressQuery('max_rate').optional().isFloat({ min: 0 }).withMessage('Ungültiger Höchstpreis'),
+  expressQuery('specialization').optional().trim().isLength({ max: 100 }),
+  expressQuery('rating').optional().isFloat({ min: 0, max: 5 }),
+  expressQuery('search').optional().trim().isLength({ max: 100 })
+], asyncHandler(async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw validationError('Ungültige Abfrageparameter');
+  }
+
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 12;
+  const offset = (page - 1) * limit;
+  const minRate = req.query.min_rate ? parseFloat(req.query.min_rate as string) : undefined;
+  const maxRate = req.query.max_rate ? parseFloat(req.query.max_rate as string) : undefined;
+  const specialization = req.query.specialization as string;
+  const minRating = req.query.rating ? parseFloat(req.query.rating as string) : undefined;
+  const searchTerm = req.query.search as string;
+
+  // WHERE-Klauseln dynamisch aufbauen
+  const whereConditions: string[] = ['u.is_active = TRUE', 't.is_available = TRUE'];
+  const queryParams: any[] = [];
+  let paramIndex = 1;
+
+  if (minRate !== undefined) {
+    whereConditions.push(`t.hourly_rate >= $${paramIndex++}`);
+    queryParams.push(minRate);
+  }
+
+  if (maxRate !== undefined) {
+    whereConditions.push(`t.hourly_rate <= $${paramIndex++}`);
+    queryParams.push(maxRate);
+  }
+
+  if (specialization) {
+    whereConditions.push(`$${paramIndex++} = ANY(t.specializations)`);
+    queryParams.push(specialization);
+  }
+
+  if (minRating !== undefined) {
+    whereConditions.push(`t.rating >= $${paramIndex++}`);
+    queryParams.push(minRating);
+  }
+
+  if (searchTerm) {
+    whereConditions.push(`(u.name ILIKE $${paramIndex++} OR t.bio ILIKE $${paramIndex} OR array_to_string(t.specializations, ' ') ILIKE $${paramIndex})`);
+    queryParams.push(`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`);
+    paramIndex++;
+  }
+
+  // Gesamtzahl der Tutoren
+  const countResult = await query(
+    `SELECT COUNT(*) 
+     FROM tutors t
+     JOIN users u ON t.user_id = u.id
+     WHERE ${whereConditions.join(' AND ')}`,
+    queryParams
+  );
+  const total = parseInt(countResult.rows[0].count);
+
+  // Tutoren abrufen
+  queryParams.push(limit, offset);
+  const result = await query(
+    `SELECT 
+      t.id, t.bio, t.experience_years, t.hourly_rate, t.currency, t.specializations,
+      t.languages, t.certifications, t.rating, t.review_count, t.total_students,
+      t.total_hours, t.availability, t.is_verified, t.created_at,
+      u.id as user_id, u.name, u.email, u.avatar_url, u.location
+     FROM tutors t
+     JOIN users u ON t.user_id = u.id
+     WHERE ${whereConditions.join(' AND ')}
+     ORDER BY t.rating DESC, t.review_count DESC, t.total_students DESC
+     LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
+    queryParams
+  );
+
+  res.json({
+    tutors: result.rows,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      hasNext: page * limit < total,
+      hasPrev: page > 1
+    }
+  });
+}));
+
+// Einzelnen Tutor abrufen
+router.get('/:id', optionalAuth, asyncHandler(async (req: Request, res: Response) => {
+  const tutorId = parseInt(req.params.id);
+  if (isNaN(tutorId)) {
+    throw validationError('Ungültige Tutor-ID');
+  }
+
+  const result = await query(
+    `SELECT 
+      t.*, 
+      u.name, u.email, u.avatar_url, u.location, u.created_at as user_created_at
+     FROM tutors t
+     JOIN users u ON t.user_id = u.id
+     WHERE t.id = $1 AND u.is_active = TRUE AND t.is_available = TRUE`,
+    [tutorId]
+  );
+
+  if (result.rows.length === 0) {
+    throw new AppError('Tutor nicht gefunden', 404);
+  }
+
+  const tutor = result.rows[0];
+
+  // Bewertungen abrufen
+  const reviewsResult = await query(
+    `SELECT r.rating, r.title, r.comment, r.created_at, u.name as reviewer_name
+     FROM reviews r
+     JOIN users u ON r.user_id = u.id
+     WHERE r.tutor_id = $1 AND r.is_public = TRUE
+     ORDER BY r.created_at DESC
+     LIMIT 10`,
+    [tutorId]
+  );
+
+  // Verfügbarkeit für die nächsten 7 Tage
+  const availabilityResult = await query(
+    `SELECT start_date, time_slot
+     FROM bookings 
+     WHERE tutor_id = $1 AND status = 'confirmed' 
+       AND start_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days'
+     ORDER BY start_date, time_slot`,
+    [tutorId]
+  );
+
+  res.json({
+    tutor,
+    reviews: reviewsResult.rows,
+    bookedSlots: availabilityResult.rows
+  });
+}));
+
+// Tutor-Profil erstellen
+router.post('/profile', [
+  authenticateToken,
+  body('bio')
+    .optional()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage('Bio zu lang'),
+  body('experience_years')
+    .isInt({ min: 0, max: 50 })
+    .withMessage('Erfahrungsjahre müssen zwischen 0 und 50 liegen'),
+  body('hourly_rate')
+    .isFloat({ min: 0 })
+    .withMessage('Stundensatz muss eine positive Zahl sein'),
+  body('specializations')
+    .isArray()
+    .withMessage('Spezialisierungen müssen ein Array sein'),
+  body('languages')
+    .isArray()
+    .withMessage('Sprachen müssen ein Array sein'),
+  body('availability')
+    .isObject()
+    .withMessage('Verfügbarkeit muss ein Objekt sein')
+], asyncHandler(async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw validationError('Eingabedaten sind ungültig');
+  }
+
+  // Prüfen, ob bereits ein Tutor-Profil existiert
+  const existingProfile = await query(
+    'SELECT id FROM tutors WHERE user_id = $1',
+    [req.user!.id]
+  );
+
+  if (existingProfile.rows.length > 0) {
+    throw new AppError('Tutor-Profil existiert bereits', 409);
+  }
+
+  const {
+    bio, experience_years, hourly_rate, currency = 'EUR', specializations,
+    languages, certifications, availability
+  } = req.body;
+
+  const result = await query(
+    `INSERT INTO tutors 
+     (user_id, bio, experience_years, hourly_rate, currency, specializations,
+      languages, certifications, availability)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     RETURNING *`,
+    [
+      req.user!.id, bio, experience_years, hourly_rate, currency,
+      specializations, languages, certifications, JSON.stringify(availability)
+    ]
+  );
+
+  // Benutzerrolle auf 'tutor' setzen
+  await query(
+    'UPDATE users SET role = $1 WHERE id = $2',
+    ['tutor', req.user!.id]
+  );
+
+  res.status(201).json({
+    message: 'Tutor-Profil erfolgreich erstellt',
+    tutor: result.rows[0]
+  });
+}));
+
+// Tutor-Profil aktualisieren
+router.put('/profile', [
+  authenticateToken,
+  requireTutorOrAdmin,
+  body('bio')
+    .optional()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage('Bio zu lang'),
+  body('hourly_rate')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Stundensatz muss eine positive Zahl sein')
+], asyncHandler(async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw validationError('Eingabedaten sind ungültig');
+  }
+
+  // Tutor-Profil finden
+  const tutorResult = await query(
+    'SELECT id, user_id FROM tutors WHERE user_id = $1',
+    [req.user!.id]
+  );
+
+  if (tutorResult.rows.length === 0) {
+    throw new AppError('Tutor-Profil nicht gefunden', 404);
+  }
+
+  const tutorId = tutorResult.rows[0].id;
+
+  const {
+    bio, experience_years, hourly_rate, currency, specializations,
+    languages, certifications, availability
+  } = req.body;
+
+  // Dynamisches Update
+  const updates: string[] = [];
+  const values: any[] = [];
+  let paramIndex = 1;
+
+  const fields = {
+    bio, experience_years, hourly_rate, currency, specializations,
+    languages, certifications, 
+    availability: availability ? JSON.stringify(availability) : undefined
+  };
+
+  Object.entries(fields).forEach(([key, value]) => {
+    if (value !== undefined) {
+      updates.push(`${key} = $${paramIndex++}`);
+      values.push(value);
+    }
+  });
+
+  if (updates.length === 0) {
+    throw validationError('Keine Aktualisierungen angegeben');
+  }
+
+  values.push(tutorId);
+
+  const result = await query(
+    `UPDATE tutors 
+     SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP
+     WHERE id = $${paramIndex}
+     RETURNING *`,
+    values
+  );
+
+  res.json({
+    message: 'Tutor-Profil erfolgreich aktualisiert',
+    tutor: result.rows[0]
+  });
+}));
+
+// Tutor buchen
+router.post('/:id/book', [
+  authenticateToken,
+  body('start_date')
+    .isISO8601()
+    .withMessage('Ungültiges Startdatum'),
+  body('time_slot')
+    .matches(/^([01]\d|2[0-3]):([0-5]\d)-([01]\d|2[0-3]):([0-5]\d)$/)
+    .withMessage('Ungültiger Zeitslot (Format: HH:MM-HH:MM)'),
+  body('duration_minutes')
+    .isInt({ min: 30, max: 480 })
+    .withMessage('Dauer muss zwischen 30 und 480 Minuten liegen'),
+  body('subject')
+    .optional()
+    .trim()
+    .isLength({ max: 200 })
+    .withMessage('Thema zu lang'),
+  body('notes')
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Notizen zu lang')
+], asyncHandler(async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw validationError('Eingabedaten sind ungültig');
+  }
+
+  const tutorId = parseInt(req.params.id);
+  if (isNaN(tutorId)) {
+    throw validationError('Ungültige Tutor-ID');
+  }
+
+  const { start_date, time_slot, duration_minutes, subject, notes } = req.body;
+
+  // Tutor abrufen
+  const tutorResult = await query(
+    `SELECT t.id, t.hourly_rate, t.is_available, u.name
+     FROM tutors t
+     JOIN users u ON t.user_id = u.id
+     WHERE t.id = $1 AND u.is_active = TRUE`,
+    [tutorId]
+  );
+
+  if (tutorResult.rows.length === 0) {
+    throw new AppError('Tutor nicht gefunden', 404);
+  }
+
+  const tutor = tutorResult.rows[0];
+  if (!tutor.is_available) {
+    throw new AppError('Tutor ist derzeit nicht verfügbar', 409);
+  }
+
+  // Prüfen, ob der Zeitslot bereits gebucht ist
+  const conflictResult = await query(
+    `SELECT id FROM bookings 
+     WHERE tutor_id = $1 AND start_date = $2 AND time_slot = $3 
+       AND status IN ('pending', 'confirmed')`,
+    [tutorId, start_date, time_slot]
+  );
+
+  if (conflictResult.rows.length > 0) {
+    throw new AppError('Dieser Zeitslot ist bereits gebucht', 409);
+  }
+
+  // Preis berechnen
+  const hourlyRate = parseFloat(tutor.hourly_rate);
+  const hours = duration_minutes / 60;
+  const totalPrice = hourlyRate * hours;
+
+  // Buchung erstellen
+  const bookingResult = await query(
+    `INSERT INTO bookings 
+     (student_id, tutor_id, booking_type, start_date, time_slot, duration_minutes, 
+      total_price, notes)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     RETURNING *`,
+    [
+      req.user!.id, tutorId, 'tutor', start_date, time_slot, 
+      duration_minutes, totalPrice, notes
+    ]
+  );
+
+  res.status(201).json({
+    message: 'Tutor erfolgreich gebucht',
+    booking: bookingResult.rows[0],
+    totalPrice
+  });
+}));
+
+// Bewertung für Tutor hinzufügen
+router.post('/:id/reviews', [
+  authenticateToken,
+  body('rating')
+    .isInt({ min: 1, max: 5 })
+    .withMessage('Bewertung muss zwischen 1 und 5 liegen'),
+  body('title')
+    .optional()
+    .trim()
+    .isLength({ max: 200 })
+    .withMessage('Titel zu lang'),
+  body('comment')
+    .optional()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage('Kommentar zu lang')
+], asyncHandler(async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw validationError('Eingabedaten sind ungültig');
+  }
+
+  const tutorId = parseInt(req.params.id);
+  if (isNaN(tutorId)) {
+    throw validationError('Ungültige Tutor-ID');
+  }
+
+  const { rating, title, comment } = req.body;
+
+  // Prüfen, ob Tutor existiert
+  const tutorExists = await query(
+    'SELECT id FROM tutors WHERE id = $1 AND is_available = TRUE',
+    [tutorId]
+  );
+  if (tutorExists.rows.length === 0) {
+    throw new AppError('Tutor nicht gefunden', 404);
+  }
+
+  // Prüfen, ob der Benutzer eine Stunde beim Tutor gebucht hatte
+  const hasBooking = await query(
+    `SELECT id FROM bookings 
+     WHERE student_id = $1 AND tutor_id = $2 AND status = 'completed'`,
+    [req.user!.id, tutorId]
+  );
+
+  if (hasBooking.rows.length === 0) {
+    throw new AppError('Sie können nur Tutoren bewerten, bei denen Sie eine Stunde genommen haben', 403);
+  }
+
+  // Prüfen, ob bereits eine Bewertung existiert
+  const existingReview = await query(
+    'SELECT id FROM reviews WHERE user_id = $1 AND tutor_id = $2',
+    [req.user!.id, tutorId]
+  );
+  if (existingReview.rows.length > 0) {
+    throw new AppError('Sie haben bereits eine Bewertung für diesen Tutor abgegeben', 409);
+  }
+
+  // Bewertung hinzufügen
+  const result = await query(
+    `INSERT INTO reviews (user_id, tutor_id, rating, title, comment)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING *`,
+    [req.user!.id, tutorId, rating, title, comment]
+  );
+
+  // Tutor-Rating und Review-Count aktualisieren
+  await query(
+    `UPDATE tutors 
+     SET rating = (
+       SELECT AVG(rating) FROM reviews WHERE tutor_id = $1 AND is_public = TRUE
+     ),
+     review_count = (
+       SELECT COUNT(*) FROM reviews WHERE tutor_id = $1 AND is_public = TRUE
+     ),
+     updated_at = CURRENT_TIMESTAMP
+     WHERE id = $1`,
+    [tutorId]
+  );
+
+  res.status(201).json({
+    message: 'Bewertung erfolgreich hinzugefügt',
+    review: result.rows[0]
+  });
+}));
+
+export default router;

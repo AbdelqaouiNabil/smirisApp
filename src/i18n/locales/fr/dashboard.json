@@ -1,0 +1,140 @@
+{
+  "title": "Tableau de bord",
+  "welcome": "Bon retour",
+  "roles": {
+    "student": "Étudiant",
+    "tutor": "Tuteur de langue",
+    "school": "École de langues",
+    "admin": "Administrateur"
+  },
+  "tabs": {
+    "overview": "Aperçu",
+    "bookings": "Mes rendez-vous",
+    "courses": "Mes cours",
+    "progress": "Progrès d'apprentissage",
+    "calendar": "Calendrier",
+    "students": "Mes étudiants",
+    "earnings": "Revenus",
+    "availability": "Disponibilité",
+    "analytics": "Analyses",
+    "users": "Utilisateurs",
+    "revenue": "Revenus",
+    "settings": "Paramètres"
+  },
+  "student": {
+    "stats": {
+      "activeCourses": "cours actifs",
+      "certificates": "certificats",
+      "upcomingLessons": "cours à venir",
+      "totalInvested": "investi"
+    },
+    "recentActivity": "Activité récente",
+    "upcomingLessons": "Cours à venir",
+    "courseProgress": "Progrès du cours"
+  },
+  "tutor": {
+    "todaysLessons": "Cours d'aujourd'hui",
+    "students": "Étudiants",
+    "weeklyEarnings": "Revenus hebdomadaires",
+    "nextLesson": "Prochain cours",
+    "earnings": {
+      "title": "Aperçu des revenus",
+      "daily": "quotidien",
+      "weekly": "hebdomadaire",
+      "monthly": "mensuel",
+      "total": "total"
+    },
+    "availability": {
+      "title": "Gestion de la disponibilité",
+      "weeklySchedule": "Disponibilité hebdomadaire",
+      "todayAvailable": "disponible aujourd'hui",
+      "bookingStats": "Statistiques de réservation",
+      "bookingRate": "Taux de réservation",
+      "popularTime": "Heure populaire"
+    }
+  },
+  "school": {
+    "overview": {
+      "activeCourses": "cours actifs",
+      "enrolledStudents": "étudiants inscrits",
+      "availableSpots": "places disponibles",
+      "monthlyRevenue": "revenus mensuels",
+      "newThisWeek": "nouveau cette semaine",
+      "thisWeek": "cette semaine",
+      "vsLastMonth": "vs mois dernier"
+    },
+    "courseManagement": {
+      "title": "Gestion des cours",
+      "addNewCourse": "Ajouter un nouveau cours",
+      "activeCourses": "cours actifs",
+      "students": "participants",
+      "maxStudents": "maximum",
+      "startDate": "début",
+      "edit": "modifier",
+      "participants": "participants",
+      "details": "détails",
+      "statistics": "Statistiques du cours",
+      "utilization": "taux d'utilisation",
+      "spotsOccupied": "places occupées",
+      "waitlist": "liste d'attente",
+      "peopleWaiting": "personnes en attente",
+      "nextStart": "prochain début de cours"
+    },
+    "studentManagement": {
+      "title": "Gestion des étudiants",
+      "name": "nom",
+      "course": "cours",
+      "level": "niveau",
+      "status": "statut",
+      "payment": "paiement",
+      "actions": "actions",
+      "active": "actif",
+      "waitlist": "liste d'attente",
+      "paid": "payé",
+      "pending": "en attente",
+      "partial": "acompte",
+      "details": "détails",
+      "contact": "contact"
+    },
+    "revenue": {
+      "title": "Revenus et paiement CMI",
+      "monthlyRevenue": "revenus mensuels",
+      "cmiPayments": "paiements CMI",
+      "totalRevenue": "du revenu total",
+      "cmiIntegration": "Intégration de paiement CMI",
+      "cmiStatus": "Statut CMI",
+      "active": "actif",
+      "merchantId": "ID marchand",
+      "processedPayments": "paiements traités",
+      "successRate": "taux de réussite",
+      "manageCMI": "Gérer les paramètres CMI",
+      "recentTransactions": "transactions récentes",
+      "date": "date",
+      "student": "étudiant",
+      "amount": "montant",
+      "method": "méthode",
+      "paid": "payé",
+      "partial": "acompte"
+    }
+  },
+  "admin": {
+    "systemOverview": "Aperçu du système",
+    "newRegistrationsToday": "nouvelles inscriptions aujourd'hui",
+    "activeBookings": "réservations actives"
+  },
+  "recentActivities": {
+    "title": "Activités récentes"
+  },
+  "quickActions": {
+    "title": "Actions rapides",
+    "bookNewCourse": "Réserver un nouveau cours",
+    "browseCourses": "Parcourir nos offres de cours",
+    "bookVisaConsultation": "Réserver une consultation visa",
+    "professionalSupport": "support professionnel",
+    "contactSupport": "Contacter le support",
+    "weAreHere": "nous sommes là pour vous aider"
+  },
+  "currency": "MAD",
+  "currency_name": "Dirham Marocain",
+  "price_format": "{amount} MAD"
+}

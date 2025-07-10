@@ -1,0 +1,52 @@
+{
+  "title": "Écoles et cours de langue allemande",
+  "subtitle": "Écoles de langues certifiées et cours avec les plus hauts standards de qualité",
+  "tabs": {
+    "schools": "Écoles de langues",
+    "courses": "Cours"
+  },
+  "filters": {
+    "selectCity": "Sélectionner la ville",
+    "allCities": "Toutes les villes",
+    "found": "trouvées"
+  },
+  "schoolCard": {
+    "teachers": "enseignants",
+    "studentsPerYear": "étudiants/an",
+    "certifications": "Certifications",
+    "features": "Installations",
+    "more": "plus",
+    "callNow": "Appeler maintenant",
+    "sendEmail": "Envoyer un e-mail",
+    "viewDetails": "Voir les détails"
+  },
+  "courseCard": {
+    "duration": "Durée",
+    "participants": "Participants",
+    "schedule": "Horaire",
+    "startDate": "Début",
+    "available": "Disponible",
+    "soldOut": "Complet",
+    "bookNow": "Réserver maintenant"
+  },
+  "schoolDetails": {
+    "about": "À propos de l'école",
+    "certifications": "Certifications et accréditations",
+    "statistics": "Statistiques",
+    "experiencedTeachers": "Enseignants expérimentés",
+    "studentsPerYear": "étudiants par an",
+    "founded": "Fondée en",
+    "yearsExperience": "années d'expérience",
+    "facilities": "Installations et services",
+    "contact": "Contact",
+    "callNow": "Appeler maintenant",
+    "sendEmail": "Envoyer un e-mail"
+  },
+  "messages": {
+    "noSchools": "Aucune école trouvée",
+    "tryDifferentCity": "Essayez une autre ville"
+  },
+  "currency": "MAD",
+  "currency_name": "Dirham Marocain",
+  "price_format": "{amount} MAD"
+}

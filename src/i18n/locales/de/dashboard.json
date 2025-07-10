@@ -1,0 +1,140 @@
+{
+  "title": "Dashboard",
+  "welcome": "Willkommen zurück",
+  "roles": {
+    "student": "Student",
+    "tutor": "Sprachlehrer",
+    "school": "Sprachschule",
+    "admin": "Administrator"
+  },
+  "tabs": {
+    "overview": "Übersicht",
+    "bookings": "Meine Termine",
+    "courses": "Meine Kurse",
+    "progress": "Lernfortschritt",
+    "calendar": "Kalender",
+    "students": "Meine Schüler",
+    "earnings": "Einnahmen",
+    "availability": "Verfügbarkeit",
+    "analytics": "Analytics",
+    "users": "Benutzer",
+    "revenue": "Umsatz",
+    "settings": "Einstellungen"
+  },
+  "student": {
+    "stats": {
+      "activeCourses": "Aktive Kurse",
+      "certificates": "Zertifikate",
+      "upcomingLessons": "Kommende Lektionen",
+      "totalInvested": "Investiert"
+    },
+    "recentActivity": "Letzte Aktivitäten",
+    "upcomingLessons": "Kommende Lektionen",
+    "courseProgress": "Kursfortschritt"
+  },
+  "tutor": {
+    "todaysLessons": "Heutige Lektionen",
+    "students": "Schüler",
+    "weeklyEarnings": "Wöchentliche Einnahmen",
+    "nextLesson": "Nächste Lektion",
+    "earnings": {
+      "title": "Einnahmen-Übersicht",
+      "daily": "Täglich",
+      "weekly": "Wöchentlich",
+      "monthly": "Monatlich",
+      "total": "Gesamt"
+    },
+    "availability": {
+      "title": "Verfügbarkeit verwalten",
+      "weeklySchedule": "Wöchentliche Verfügbarkeit",
+      "todayAvailable": "Heute verfügbar",
+      "bookingStats": "Buchungsstatistiken",
+      "bookingRate": "Buchungsrate",
+      "popularTime": "Beliebteste Zeit"
+    }
+  },
+  "school": {
+    "overview": {
+      "activeCourses": "Aktive Kurse",
+      "enrolledStudents": "Eingeschriebene Schüler",
+      "availableSpots": "Verfügbare Plätze",
+      "monthlyRevenue": "Monatsumsatz",
+      "newThisWeek": "neue diese Woche",
+      "thisWeek": "diese Woche",
+      "vsLastMonth": "vs. letzter Monat"
+    },
+    "courseManagement": {
+      "title": "Kursverwaltung",
+      "addNewCourse": "Neuen Kurs hinzufügen",
+      "activeCourses": "Aktive Kurse",
+      "students": "Teilnehmer",
+      "maxStudents": "max",
+      "startDate": "Start",
+      "edit": "Bearbeiten",
+      "participants": "Teilnehmer",
+      "details": "Details",
+      "statistics": "Kurs-Statistiken",
+      "utilization": "Auslastung",
+      "spotsOccupied": "Plätze belegt",
+      "waitlist": "Warteliste",
+      "peopleWaiting": "Personen auf der Warteliste",
+      "nextStart": "Nächster Kursstart"
+    },
+    "studentManagement": {
+      "title": "Schülerverwaltung",
+      "name": "Name",
+      "course": "Kurs",
+      "level": "Level",
+      "status": "Status",
+      "payment": "Zahlung",
+      "actions": "Aktionen",
+      "active": "Aktiv",
+      "waitlist": "Warteliste",
+      "paid": "Bezahlt",
+      "pending": "Ausstehend",
+      "partial": "Anzahlung",
+      "details": "Details",
+      "contact": "Kontakt"
+    },
+    "revenue": {
+      "title": "Einnahmen & CMI-Payment",
+      "monthlyRevenue": "Monatliche Einnahmen",
+      "cmiPayments": "CMI-Zahlungen",
+      "totalRevenue": "der Gesamteinnahmen",
+      "cmiIntegration": "CMI-Payment Integration",
+      "cmiStatus": "CMI Status",
+      "active": "Aktiv",
+      "merchantId": "Merchant ID",
+      "processedPayments": "Verarbeitete Zahlungen",
+      "successRate": "Erfolgsrate",
+      "manageCMI": "CMI-Einstellungen verwalten",
+      "recentTransactions": "Letzte Transaktionen",
+      "date": "Datum",
+      "student": "Student",
+      "amount": "Betrag",
+      "method": "Methode",
+      "paid": "Bezahlt",
+      "partial": "Anzahlung"
+    }
+  },
+  "admin": {
+    "systemOverview": "System-Übersicht",
+    "newRegistrationsToday": "Neue Anmeldungen heute",
+    "activeBookings": "Aktive Buchungen"
+  },
+  "recentActivities": {
+    "title": "Letzte Aktivitäten"
+  },
+  "quickActions": {
+    "title": "Schnellaktionen",
+    "bookNewCourse": "Neuen Kurs buchen",
+    "browseCourses": "Durchstöbern Sie unser Kursangebot",
+    "bookVisaConsultation": "Visa-Beratung buchen",
+    "professionalSupport": "Professionelle Unterstützung",
+    "contactSupport": "Support kontaktieren",
+    "weAreHere": "Wir helfen Ihnen gerne"
+  },
+  "currency": "MAD",
+  "currency_name": "Marokkanische Dirham",
+  "price_format": "{amount} MAD"
+}

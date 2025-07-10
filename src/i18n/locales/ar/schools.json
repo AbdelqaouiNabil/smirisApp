@@ -1,0 +1,52 @@
+{
+  "title": "مدارس ودورات اللغة الألمانية",
+  "subtitle": "مدارس لغة معتمدة ودورات بأعلى معايير الجودة",
+  "tabs": {
+    "schools": "مدارس اللغة",
+    "courses": "الدورات"
+  },
+  "filters": {
+    "selectCity": "اختر المدينة",
+    "allCities": "جميع المدن",
+    "found": "تم العثور عليها"
+  },
+  "schoolCard": {
+    "teachers": "معلمون",
+    "studentsPerYear": "طلاب/سنة",
+    "certifications": "الشهادات",
+    "features": "المرافق",
+    "more": "المزيد",
+    "callNow": "اتصل الآن",
+    "sendEmail": "إرسال بريد إلكتروني",
+    "viewDetails": "عرض التفاصيل"
+  },
+  "courseCard": {
+    "duration": "المدة",
+    "participants": "المشاركون",
+    "schedule": "الجدول الزمني",
+    "startDate": "البداية",
+    "available": "متاح",
+    "soldOut": "مكتمل",
+    "bookNow": "احجز الآن"
+  },
+  "schoolDetails": {
+    "about": "عن المدرسة",
+    "certifications": "الشهادات والاعتمادات",
+    "statistics": "الإحصائيات",
+    "experiencedTeachers": "معلمون ذوو خبرة",
+    "studentsPerYear": "طلاب في السنة",
+    "founded": "تأسست",
+    "yearsExperience": "سنوات الخبرة",
+    "facilities": "المرافق والميزات",
+    "contact": "اتصال",
+    "callNow": "اتصل الآن",
+    "sendEmail": "إرسال بريد إلكتروني"
+  },
+  "messages": {
+    "noSchools": "لم يتم العثور على مدارس",
+    "tryDifferentCity": "جرب مدينة أخرى"
+  },
+  "currency": "درهم",
+  "currency_name": "الدرهم المغربي",
+  "price_format": "{amount} درهم"
+}

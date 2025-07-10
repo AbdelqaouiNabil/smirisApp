@@ -1,0 +1,83 @@
+{
+  "hero": {
+    "title": "Ihre Brücke zum Deutschlernen in Marokko",
+    "subtitle": "🇩🇪 SmirisGermany - Ihr Partner für deutsche Sprache",
+    "description": "Mit SmirisGermany finden Sie die beste Sprachschule, qualifizierte Tutoren und umfassende Visa-Services - alles für Ihren Erfolg beim Deutschlernen",
+    "cta": "Sprachschulen entdecken",
+    "learnMore": "Mehr erfahren"
+  },
+  "features": {
+    "title": "Warum SmirisGermany?",
+    "subtitle": "Ihre professionelle Plattform für deutsches Sprachlernen in Marokko",
+    "items": {
+      "schools": {
+        "title": "Zertifizierte Sprachschulen",
+        "description": "Partnerschulen mit höchsten Qualitätsstandards und anerkannten Zertifizierungen"
+      },
+      "tutors": {
+        "title": "Private Deutschlehrer",
+        "description": "Qualifizierte Muttersprachler für individuellen Unterricht nach Ihrem Tempo"
+      },
+      "visa": {
+        "title": "Visa & Immigration",
+        "description": "Professionelle Beratung und Unterstützung für alle Visa-Angelegenheiten"
+      },
+      "support": {
+        "title": "24/7 Support",
+        "description": "Unser deutschsprachiges Team steht Ihnen jederzeit zur Verfügung"
+      }
+    }
+  },
+  "stats": {
+    "students": "Zufriedene Studenten",
+    "schools": "Partnerschulen",
+    "tutors": "Qualifizierte Tutoren",
+    "success": "Erfolgsquote"
+  },
+  "privateTutors": {
+    "title": "Private Deutschlehrer",
+    "subtitle": "Individueller Unterricht mit erfahrenen Muttersprachlern",
+    "features": {
+      "flexible": "Flexible Termine",
+      "personalized": "Personalisierter Lehrplan",
+      "native": "Muttersprachler",
+      "online": "Online & Präsenz"
+    },
+    "cta": "Tutoren entdecken"
+  },
+  "trustIndicators": {
+    "visaSuccess": "1000+ erfolgreiche Visa-Anträge",
+    "certified": "Zertifizierte Sprachschulen",
+    "personal": "Persönliche Betreuung"
+  },
+  "testimonials": {
+    "title": "Das sagen unsere Studenten",
+    "subtitle": "Erfolgsgeschichten aus unserer Community",
+    "items": {
+      "ahmed": {
+        "name": "Ahmed El Mansouri",
+        "role": "Student, A1 → B2",
+        "text": "Dank SmirisGermany habe ich in nur 8 Monaten mein B2-Zertifikat erhalten und arbeite jetzt in Berlin!"
+      },
+      "fatima": {
+        "name": "Fatima Benali",
+        "role": "Ärztin",
+        "text": "Die medizinischen Deutschkurse haben mir geholfen, meine Approbation in Deutschland zu erhalten."
+      },
+      "youssef": {
+        "name": "Youssef Khadiri",
+        "role": "Ingenieur",
+        "text": "Excellente Vorbereitung für mein Studium in Deutschland. Sehr empfehlenswert!"
+      }
+    }
+  },
+  "cta": {
+    "title": "Bereit für Ihren Weg zum perfekten Deutsch?",
+    "subtitle": "Starten Sie heute Ihre Deutschreise mit SmirisGermany",
+    "primary": "Sprachschule finden",
+    "secondary": "Beratung buchen"
+  },
+  "currency": "MAD",
+  "currency_name": "Marokkanische Dirham",
+  "price_format": "{amount} MAD"
+}

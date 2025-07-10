@@ -1,0 +1,237 @@
+import React, { createContext, useContext, useState, useEffect } from 'react'
+import { authApi, ApiError } from '../lib/api'
+
+export interface StudentRegistrationData {
+  email: string
+  familyName: string
+  firstName: string
+  city: string
+  whatsappNumber: string
+  bestCallTime: string
+  educationLevel: string
+  baccalaureatGrade: string
+  interestedOffer: string
+  studyBudget: string
+  howFoundUs: string
+  studyFinancing: string
+  currentLanguageLevel: string
+  password: string
+}
+
+interface User {
+  id: number
+  name: string
+  email: string
+  role: 'student' | 'tutor' | 'admin' | 'school'
+  avatar_url?: string
+  // Erweiterte Felder für Studenten
+  familyName?: string
+  firstName?: string
+  city?: string
+  whatsappNumber?: string
+  bestCallTime?: string
+  educationLevel?: string
+  baccalaureatGrade?: string
+  interestedOffer?: string
+  studyBudget?: string
+  howFoundUs?: string
+  studyFinancing?: string
+  currentLanguageLevel?: string
+  // Erweiterte Felder für Schulen
+  schoolId?: number
+  address?: string
+  phone?: string
+  description?: string
+  // Erweiterte Felder für Admins
+  permissions?: string[]
+}
+
+interface AuthContextType {
+  user: User | null
+  isAuthenticated: boolean
+  login: (email: string, password: string) => Promise<boolean>
+  logout: () => Promise<void>
+  register: (name: string, email: string, password: string, role: string) => Promise<boolean>
+  registerStudent: (data: StudentRegistrationData) => Promise<boolean>
+  isLoading: boolean
+  hasRole: (role: string) => boolean
+  canAccessAdminPanel: () => boolean
+  canManageSchool: (schoolId?: number) => boolean
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+export function useAuth() {
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
+}
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    // Check for existing authentication token
+    const checkAuth = async () => {
+      const token = localStorage.getItem('auth_token')
+      if (token) {
+        try {
+          authApi.setToken(token)
+          const response = await authApi.me() as any
+          setUser(response.user || response)
+        } catch (error) {
+          // Token is invalid, remove it
+          localStorage.removeItem('auth_token')
+          localStorage.removeItem('germansphere_user')
+          authApi.setToken(null)
+        }
+      }
+      setIsLoading(false)
+    }
+
+    checkAuth()
+  }, [])
+
+  const login = async (email: string, password: string) => {
+    setIsLoading(true)
+    try {
+      // 1. Call backend API
+      const response = await authApi.login({ email, password })
+      
+      // 2. Store JWT token
+      authApi.setToken(response.access_token)
+      
+      // 3. Store user object in localStorage
+      localStorage.setItem('auth_user', JSON.stringify(response.user))
+      
+      setUser(response.user)
+      setIsLoading(false)
+      return true
+    } catch (err) {
+      setIsLoading(false)
+      return false
+    }
+  }
+
+  const register = async (name: string, email: string, password: string, role: string): Promise<boolean> => {
+    setIsLoading(true)
+    
+    try {
+      const response = await authApi.register({ name, email, password, role })
+      
+      // Set the token for future requests
+      authApi.setToken(response.access_token)
+      
+      // Store the user data
+      setUser(response.user)
+      localStorage.setItem('germansphere_user', JSON.stringify(response.user))
+      
+      setIsLoading(false)
+      return true
+    } catch (error) {
+      console.error('Registration error:', error)
+      setIsLoading(false)
+      return false
+    }
+  }
+
+  const registerStudent = async (data: StudentRegistrationData): Promise<boolean> => {
+    setIsLoading(true)
+    
+    try {
+      // Create registration payload with student-specific data
+      const registrationData = {
+        name: `${data.firstName} ${data.familyName}`,
+        email: data.email,
+        password: data.password,
+        role: 'student',
+        // Additional student data
+        ...data
+      }
+      
+      const response = await authApi.register(registrationData)
+      
+      // Set the token for future requests
+      authApi.setToken(response.access_token)
+      
+      // Store the user data with additional fields
+      const userWithExtras = {
+        ...response.user,
+        familyName: data.familyName,
+        firstName: data.firstName,
+        city: data.city,
+        whatsappNumber: data.whatsappNumber,
+        bestCallTime: data.bestCallTime,
+        educationLevel: data.educationLevel,
+        baccalaureatGrade: data.baccalaureatGrade,
+        interestedOffer: data.interestedOffer,
+        studyBudget: data.studyBudget,
+        howFoundUs: data.howFoundUs,
+        studyFinancing: data.studyFinancing,
+        currentLanguageLevel: data.currentLanguageLevel
+      }
+      
+      setUser(userWithExtras)
+      localStorage.setItem('germansphere_user', JSON.stringify(userWithExtras))
+      
+      setIsLoading(false)
+      return true
+    } catch (error) {
+      console.error('Student registration error:', error)
+      setIsLoading(false)
+      return false
+    }
+  }
+
+  const hasRole = (role: string): boolean => {
+    return user?.role === role
+  }
+
+  const canAccessAdminPanel = (): boolean => {
+    return user?.role === 'admin'
+  }
+
+  const canManageSchool = (schoolId?: number): boolean => {
+    if (user?.role === 'admin') return true
+    if (user?.role === 'school') {
+      return schoolId ? user.schoolId === schoolId : true
+    }
+    return false
+  }
+
+  const logout = async () => {
+    try {
+      await authApi.logout()
+    } catch (error) {
+      console.error('Logout error:', error)
+    } finally {
+      // Always clean up local state regardless of API call success
+      setUser(null)
+      authApi.setToken(null)
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('germansphere_user')
+    }
+  }
+
+  const value = {
+    user,
+    isAuthenticated: !!user,
+    login,
+    logout,
+    register,
+    registerStudent,
+    isLoading,
+    hasRole,
+    canAccessAdminPanel,
+    canManageSchool
+  }
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  )
+}

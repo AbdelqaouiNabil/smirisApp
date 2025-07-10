@@ -1,0 +1,58 @@
+{
+  "title": "Deutsche Sprachkurse",
+  "subtitle": "Finden Sie den perfekten Deutschkurs für Ihr Ziel",
+  "filters": {
+    "level": "Sprachniveau",
+    "city": "Stadt",
+    "price": "Preisbereich",
+    "duration": "Kursdauer",
+    "type": "Kurstyp",
+    "schedule": "Zeitplan"
+  },
+  "levels": {
+    "A1": "A1 - Anfänger",
+    "A2": "A2 - Grundkenntnisse",
+    "B1": "B1 - Mittelstufe",
+    "B2": "B2 - Gute Mittelstufe",
+    "C1": "C1 - Fortgeschritten",
+    "C2": "C2 - Muttersprachlich"
+  },
+  "types": {
+    "intensive": "Intensivkurs",
+    "business": "Business Deutsch",
+    "medical": "Medizinisches Deutsch",
+    "online": "Online-Kurs",
+    "evening": "Abendkurs",
+    "weekend": "Wochenendkurs"
+  },
+  "card": {
+    "duration": "Dauer",
+    "schedule": "Zeitplan",
+    "students": "Teilnehmer",
+    "startDate": "Kursbeginn",
+    "features": "Kursinhalt",
+    "price": "Preis",
+    "bookNow": "Jetzt buchen",
+    "available": "Verfügbar",
+    "waitlist": "Warteliste",
+    "soldOut": "Ausgebucht"
+  },
+  "details": {
+    "description": "Kursbeschreibung",
+    "objectives": "Lernziele",
+    "prerequisites": "Voraussetzungen",
+    "materials": "Kursmaterialien",
+    "certificate": "Zertifikat",
+    "instructor": "Kursleiter"
+  },
+  "booking": {
+    "title": "Kurs buchen",
+    "personalInfo": "Persönliche Daten",
+    "courseDetails": "Kursdetails",
+    "payment": "Zahlung",
+    "confirmation": "Bestätigung"
+  },
+  "currency": "MAD",
+  "currency_name": "Marokkanische Dirham",
+  "price_format": "{amount} MAD"
+}

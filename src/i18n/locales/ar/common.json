@@ -1,0 +1,81 @@
+{
+  "buttons": {
+    "login": "تسجيل الدخول",
+    "register": "إنشاء حساب",
+    "logout": "تسجيل الخروج",
+    "book": "حجز",
+    "bookNow": "احجز الآن",
+    "search": "بحث",
+    "filter": "تصفية",
+    "reset": "إعادة تعيين",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "continue": "متابعة",
+    "submit": "إرسال",
+    "edit": "تعديل",
+    "delete": "حذف",
+    "view": "عرض",
+    "details": "التفاصيل",
+    "contact": "اتصال",
+    "callNow": "اتصل الآن",
+    "sendEmail": "إرسال بريد إلكتروني",
+    "sendMessage": "إرسال رسالة",
+    "close": "إغلاق"
+  },
+  "forms": {
+    "name": "الاسم",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "confirmPassword": "تأكيد كلمة المرور",
+    "phone": "الهاتف",
+    "date": "التاريخ",
+    "time": "الوقت",
+    "duration": "المدة",
+    "subject": "الموضوع",
+    "notes": "ملاحظات",
+    "message": "الرسالة",
+    "address": "العنوان",
+    "city": "المدينة",
+    "country": "البلد"
+  },
+  "status": {
+    "active": "نشط",
+    "inactive": "غير نشط",
+    "pending": "في الانتظار",
+    "confirmed": "مؤكد",
+    "cancelled": "ملغى",
+    "completed": "مكتمل",
+    "available": "متاح",
+    "unavailable": "غير متاح",
+    "paid": "مدفوع",
+    "unpaid": "غير مدفوع"
+  },
+  "time": {
+    "minutes": "دقائق",
+    "hours": "ساعات",
+    "days": "أيام",
+    "weeks": "أسابيع",
+    "months": "أشهر",
+    "years": "سنوات",
+    "today": "اليوم",
+    "tomorrow": "غداً",
+    "yesterday": "أمس"
+  },
+  "currency": "درهم",
+  "validation": {
+    "required": "هذا الحقل مطلوب",
+    "email": "يرجى إدخال عنوان بريد إلكتروني صحيح",
+    "password": "كلمة المرور يجب أن تكون 6 أحرف على الأقل",
+    "passwordMatch": "كلمات المرور غير متطابقة",
+    "phone": "يرجى إدخال رقم هاتف صحيح"
+  },
+  "messages": {
+    "success": "نجح!",
+    "error": "حدث خطأ",
+    "loading": "جاري التحميل...",
+    "noResults": "لم يتم العثور على نتائج",
+    "tryAgain": "يرجى المحاولة مرة أخرى"
+  },
+  "currency_name": "الدرهم المغربي",
+  "price_format": "{amount} درهم"
+}

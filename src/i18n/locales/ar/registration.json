@@ -1,0 +1,75 @@
+{
+  "studentRegistration": {
+    "title": "التسجيل كطالب",
+    "subtitle": "انضم إلى Germansphere وابدأ رحلتك نحو ألمانيا",
+    "step1": {
+      "title": "المعلومات الأساسية",
+      "subtitle": "الخطوة 1 من 3",
+      "email": "البريد الإلكتروني",
+      "familyName": "الاسم العائلي (بالأحرف الفرنسية)",
+      "firstName": "الاسم الشخصي",
+      "city": "المدينة",
+      "password": "كلمة المرور",
+      "confirmPassword": "تأكيد كلمة المرور",
+      "selectCity": "اختر المدينة"
+    },
+    "step2": {
+      "title": "معلومات الاتصال والتعليم",
+      "subtitle": "الخطوة 2 من 3",
+      "whatsapp": "رقم الواتساب",
+      "bestCallTime": "أحسن توقيت للاتصال",
+      "educationLevel": "المستوى الدراسي",
+      "baccalaureatGrade": "معدل البكالوريا",
+      "selectTime": "اختر الوقت",
+      "selectLevel": "اختر المستوى"
+    },
+    "step3": {
+      "title": "تفاصيل الدراسة والتمويل",
+      "subtitle": "الخطوة 3 من 3",
+      "interestedOffer": "العرض المهتم به",
+      "studyBudget": "ميزانية الدراسة في ألمانيا",
+      "howFoundUs": "كيف تعرفت علينا",
+      "studyFinancing": "طريقة تمويل الدراسة",
+      "currentLanguageLevel": "مستوى اللغة الألمانية الحالي",
+      "selectOffer": "اختر العرض",
+      "selectBudget": "اختر الميزانية",
+      "selectSource": "اختر المصدر",
+      "selectFinancing": "اختر طريقة التمويل",
+      "selectLanguageLevel": "اختر مستوى اللغة"
+    },
+    "navigation": {
+      "previous": "السابق",
+      "next": "التالي",
+      "finish": "إنهاء التسجيل",
+      "submitting": "جاري التسجيل..."
+    },
+    "validation": {
+      "emailRequired": "البريد الإلكتروني مطلوب",
+      "familyNameRequired": "الاسم العائلي مطلوب",
+      "firstNameRequired": "الاسم الشخصي مطلوب",
+      "cityRequired": "المدينة مطلوبة",
+      "passwordMinLength": "كلمة المرور يجب أن تكون 6 أحرف على الأقل",
+      "passwordMismatch": "كلمات المرور غير متطابقة",
+      "whatsappRequired": "رقم الواتساب مطلوب",
+      "callTimeRequired": "وقت الاتصال مطلوب",
+      "educationRequired": "المستوى الدراسي مطلوب",
+      "gradeRequired": "معدل البكالوريا مطلوب",
+      "offerRequired": "العرض المهتم به مطلوب",
+      "budgetRequired": "الميزانية مطلوبة",
+      "sourceRequired": "كيف تعرفت علينا مطلوب",
+      "financingRequired": "طريقة التمويل مطلوبة",
+      "languageLevelRequired": "مستوى اللغة مطلوب"
+    },
+    "success": {
+      "title": "تم التسجيل بنجاح!",
+      "description": "مرحباً بك في Germansphere"
+    },
+    "error": {
+      "title": "خطأ في التسجيل",
+      "description": "حاول مرة أخرى",
+      "unexpected": "حدث خطأ غير متوقع"
+    },
+    "alreadyHaveAccount": "لديك حساب بالفعل؟",
+    "login": "تسجيل الدخول"
+  }
+}

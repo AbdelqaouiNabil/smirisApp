@@ -1,0 +1,14 @@
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import { ErrorBoundary } from './components/ErrorBoundary.tsx'
+import './index.css'
+import './i18n'
+import MVPApp from './MVPApp.tsx'
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <ErrorBoundary>
+      <MVPApp />
+    </ErrorBoundary>
+  </StrictMode>,
+)

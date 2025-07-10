@@ -1,0 +1,75 @@
+{
+  "title": "Deutsche Privat-Tutoren",
+  "subtitle": "Finden Sie den perfekten Deutschlehrer für Einzelunterricht",
+  "filters": {
+    "search": "Suche",
+    "searchPlaceholder": "Tutor oder Spezialisierung...",
+    "specialization": "Spezialisierung",
+    "city": "Stadt",
+    "priceRange": "Preisbereich",
+    "availability": "Verfügbarkeit",
+    "rating": "Bewertung",
+    "reset": "Zurücksetzen"
+  },
+  "specializations": {
+    "conversation": "Konversation",
+    "business": "Business Deutsch",
+    "grammar": "Grammatik",
+    "testPrep": "Prüfungsvorbereitung",
+    "medical": "Medizinisches Deutsch",
+    "literature": "Deutsche Literatur",
+    "beginners": "Anfänger",
+    "advanced": "Fortgeschrittene"
+  },
+  "priceRanges": {
+    "under25": "Unter 25€",
+    "25-35": "25€ - 35€",
+    "over35": "Über 35€"
+  },
+  "card": {
+    "hourlyRate": "pro Stunde",
+    "rating": "Bewertung",
+    "reviews": "Bewertungen",
+    "lessons": "Lektionen",
+    "onlineOnly": "Nur Online-Unterricht",
+    "bookLesson": "Lektion buchen",
+    "viewProfile": "Profil ansehen"
+  },
+  "profile": {
+    "about": "Über mich",
+    "teachingStyle": "Unterrichtsstil",
+    "education": "Ausbildung & Erfahrung",
+    "specializations": "Spezialisierungen",
+    "languages": "Sprachen",
+    "prices": "Preise",
+    "singleLesson": "Einzelstunde",
+    "packages": "Pakete (günstiger)",
+    "availability": "Verfügbarkeit diese Woche",
+    "notAvailable": "Nicht verfügbar",
+    "bookNow": "Jetzt buchen",
+    "sendMessage": "Nachricht senden"
+  },
+  "booking": {
+    "title": "Lektion buchen",
+    "selectDate": "Datum wählen",
+    "selectTime": "Uhrzeit wählen",
+    "availableTime": "Verfügbare Zeit wählen",
+    "duration": "Dauer",
+    "minutes": "Minuten",
+    "standard": "Standard",
+    "subject": "Unterrichtsthema",
+    "subjectPlaceholder": "z.B. Konversationspraxis, Grammatik...",
+    "notes": "Zusätzliche Notizen",
+    "notesPlaceholder": "Besondere Wünsche oder Fragen...",
+    "totalPrice": "Gesamtpreis",
+    "confirmBooking": "Buchung bestätigen"
+  },
+  "messages": {
+    "bookingSuccess": "Buchung erfolgreich!",
+    "noTutors": "Keine Tutoren gefunden",
+    "tryDifferentFilters": "Versuchen Sie andere Filter"
+  },
+  "currency": "MAD",
+  "currency_name": "Marokkanische Dirham",
+  "price_format": "{amount} MAD"
+}
