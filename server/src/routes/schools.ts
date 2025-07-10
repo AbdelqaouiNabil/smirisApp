@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { body, query as expressQuery, validationResult } from 'express-validator';
 import { query } from '../database/connection';
 import { authenticateToken, requireSchoolOrAdmin, optionalAuth } from '../middleware/auth';
@@ -14,7 +14,7 @@ router.get('/', [
   expressQuery('location').optional().trim().isLength({ max: 100 }),
   expressQuery('rating').optional().isFloat({ min: 0, max: 5 }),
   expressQuery('search').optional().trim().isLength({ max: 100 })
-], asyncHandler(async (req, res) => {
+], asyncHandler(async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     throw validationError('Ungültige Abfrageparameter');
@@ -83,7 +83,7 @@ router.get('/', [
 }));
 
 // Einzelne Schule abrufen
-router.get('/:id', optionalAuth, asyncHandler(async (req, res) => {
+router.get('/:id', optionalAuth, asyncHandler(async (req: Request, res: Response) => {
   const schoolId = parseInt(req.params.id);
   if (isNaN(schoolId)) {
     throw validationError('Ungültige Schul-ID');
@@ -136,6 +136,18 @@ router.get('/:id', optionalAuth, asyncHandler(async (req, res) => {
   });
 }));
 
+// Fetch school by user_id (owner_id)
+router.get('/by-user/:userId', asyncHandler(async (req: Request, res: Response) => {
+  const userId = parseInt(req.params.userId);
+  if (isNaN(userId)) throw validationError('Ungültige User-ID');
+  const result = await query(
+    `SELECT * FROM schools WHERE owner_id = $1 AND is_active = TRUE`,
+    [userId]
+  );
+  if (result.rows.length === 0) throw new AppError('Schule nicht gefunden', 404);
+  res.json({ school: result.rows[0] });
+}));
+
 // Neue Schule erstellen (nur für Admins und Schul-Accounts)
 router.post('/', [
   authenticateToken,
@@ -165,7 +177,7 @@ router.post('/', [
     .optional()
     .isURL()
     .withMessage('Ungültige Website-URL')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     throw validationError('Eingabedaten sind ungültig');
@@ -217,7 +229,7 @@ router.put('/:id', [
     .trim()
     .isLength({ max: 1000 })
     .withMessage('Beschreibung zu lang')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     throw validationError('Eingabedaten sind ungültig');
@@ -289,7 +301,7 @@ router.put('/:id', [
 router.delete('/:id', [
   authenticateToken,
   requireSchoolOrAdmin
-], asyncHandler(async (req, res) => {
+], asyncHandler(async (req: Request, res: Response) => {
   const schoolId = parseInt(req.params.id);
   if (isNaN(schoolId)) {
     throw validationError('Ungültige Schul-ID');
@@ -343,7 +355,7 @@ router.post('/:id/reviews', [
     .trim()
     .isLength({ max: 1000 })
     .withMessage('Kommentar zu lang')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     throw validationError('Eingabedaten sind ungültig');

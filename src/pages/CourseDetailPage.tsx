@@ -16,12 +16,26 @@ export default function CourseDetailPage() {
   useEffect(() => {
     const loadCourseDetails = async () => {
       console.log('CourseDetailPage: Loading course with ID:', id)
-      if (!id) return
+      
+      if (!id) {
+        console.error('CourseDetailPage: No ID provided')
+        setError('Keine Kurs-ID angegeben')
+        setLoading(false)
+        return
+      }
+      
+      const numericId = parseInt(id)
+      if (isNaN(numericId)) {
+        console.error('CourseDetailPage: Invalid ID format:', id)
+        setError('Ungültige Kurs-ID Format')
+        setLoading(false)
+        return
+      }
       
       try {
         setLoading(true)
-        console.log('CourseDetailPage: Making API call for course ID:', id)
-        const courseResponse = await coursesApi.getById(parseInt(id))
+        console.log('CourseDetailPage: Making API call for course ID:', numericId)
+        const courseResponse = await coursesApi.getById(numericId)
         console.log('CourseDetailPage: Course response:', courseResponse)
         setCourse(courseResponse.course)
         

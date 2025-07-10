@@ -16,6 +16,8 @@ import TutorDashboard from './pages/TutorDashboard'
 import TutorsPage from './pages/TutorsPage'
 import SchoolsPage from './pages/SchoolsPage'
 import CoursesPage from './pages/CoursesPage'
+import CourseDetailPage from './pages/CourseDetailPage'
+import BookingPage from './pages/BookingPage'
 import LoginPage from './pages/LoginPage'
 import SchoolDashboard from './pages/SchoolDashboard'
 import ComparisonPage from './pages/ComparisonPage'
@@ -52,6 +54,12 @@ function MVPApp() {
                   {/* Courses */}
                   <Route path="/courses" element={<CoursesPage />} />
                   <Route path="/kurse" element={<CoursesPage />} />
+                  <Route path="/courses/:id" element={<CourseDetailPage />} />
+                  <Route path="/kurse/:id" element={<CourseDetailPage />} />
+                  
+                  {/* Booking System */}
+                  <Route path="/booking/:type/:id" element={<BookingPage />} />
+                  <Route path="/buchen/:type/:id" element={<BookingPage />} />
                   
                   {/* Comparison & Details */}
                   <Route path="/vergleich" element={<ComparisonPage />} />

@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useComparison, ComparisonItem, ComparisonItemType } from '../../contexts/ComparisonContext'
+import { useAuth } from '../../contexts/AuthContext'
 import { BarChart3, Check, X } from 'lucide-react'
 import { useToast } from '../../hooks/use-toast'
 
@@ -15,6 +17,8 @@ interface ComparisonButtonProps {
 
 export function ComparisonButton({ item, className = '', variant = 'default' }: ComparisonButtonProps) {
   const { addItem, removeItem, isInComparison, canAddMore } = useComparison()
+  const { user } = useAuth()
+  const navigate = useNavigate()
   const { toast } = useToast()
   const [isHovering, setIsHovering] = useState(false)
 
@@ -22,6 +26,13 @@ export function ComparisonButton({ item, className = '', variant = 'default' }: 
   const canAdd = canAddMore(item.type)
 
   const handleClick = () => {
+    // Check if user is authenticated
+    if (!user) {
+      // Redirect to login page if user is not authenticated
+      navigate('/login')
+      return
+    }
+    
     if (isAdded) {
       removeItem(item.id, item.type)
       toast({

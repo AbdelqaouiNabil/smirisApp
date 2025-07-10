@@ -1,7 +1,7 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { body, query as expressQuery, validationResult } from 'express-validator';
 import { query } from '../database/connection';
-import { authenticateToken, requireSchoolOrAdmin, optionalAuth } from '../middleware/auth';
+import { authenticateToken, requireSchoolOrAdmin, optionalAuth, requireTutorOrAdmin } from '../middleware/auth';
 import { asyncHandler, AppError, validationError } from '../middleware/errorHandler';
 
 const router = express.Router();
@@ -19,7 +19,7 @@ router.get('/', [
   expressQuery('max_price').optional().isFloat({ min: 0 }).withMessage('Ungültiger Höchstpreis'),
   expressQuery('is_online').optional().isBoolean().withMessage('Ungültiger Online-Parameter'),
   expressQuery('search').optional().trim().isLength({ max: 100 })
-], asyncHandler(async (req, res) => {
+], asyncHandler(async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     throw validationError('Ungültige Abfrageparameter');
@@ -137,7 +137,7 @@ router.get('/', [
 }));
 
 // Einzelnen Kurs abrufen
-router.get('/:id', optionalAuth, asyncHandler(async (req, res) => {
+router.get('/:id', optionalAuth, asyncHandler(async (req: Request, res: Response) => {
   const courseId = parseInt(req.params.id);
   if (isNaN(courseId)) {
     throw validationError('Ungültige Kurs-ID');
@@ -212,7 +212,7 @@ router.post('/', [
     .optional()
     .isIn(['general', 'business', 'exam_prep', 'conversation'])
     .withMessage('Ungültige Kategorie')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     throw validationError('Eingabedaten sind ungültig');
@@ -258,6 +258,48 @@ router.post('/', [
   });
 }));
 
+// Tutor erstellt neuen Kurs
+router.post('/tutor', [
+  authenticateToken,
+  requireTutorOrAdmin,
+  body('title').trim().isLength({ min: 2, max: 200 }).withMessage('Kurstitel muss zwischen 2 und 200 Zeichen lang sein'),
+  body('level').isIn(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']).withMessage('Ungültiges Kurslevel'),
+  body('category').isIn(['general', 'business', 'exam_prep', 'conversation']).withMessage('Ungültige Kategorie'),
+  body('price').isFloat({ min: 0 }).withMessage('Preis muss eine positive Zahl sein'),
+  body('duration_weeks').optional().isInt({ min: 1, max: 52 }),
+  body('hours_per_week').optional().isInt({ min: 1, max: 40 }),
+  body('max_students').optional().isInt({ min: 1, max: 100 }),
+  body('start_date').optional().isISO8601(),
+  body('end_date').optional().isISO8601(),
+  body('is_online').optional().isBoolean(),
+  body('description').optional().isString(),
+], asyncHandler(async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw validationError('Ungültige Eingabedaten: ' + errors.array().map(e => e.msg).join(', '));
+  }
+
+  const {
+    title, level, category, price, duration_weeks, hours_per_week, max_students,
+    start_date, end_date, is_online, description
+  } = req.body;
+
+  // Insert new course for this tutor
+  const result = await query(
+    `INSERT INTO courses (
+      title, level, category, price, duration_weeks, hours_per_week, max_students,
+      start_date, end_date, is_online, description, tutor_id, is_active, currency
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, TRUE, 'MAD')
+    RETURNING *`,
+    [
+      title, level, category, price, duration_weeks || 1, hours_per_week || 1, max_students || 1,
+      start_date, end_date, is_online ?? true, description || '', req.user!.id
+    ]
+  );
+
+  res.status(201).json({ course: result.rows[0] });
+}));
+
 // Kurs aktualisieren
 router.put('/:id', [
   authenticateToken,
@@ -275,7 +317,7 @@ router.put('/:id', [
     .optional()
     .isInt({ min: 1, max: 100 })
     .withMessage('Maximale Teilnehmerzahl muss zwischen 1 und 100 liegen')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     throw validationError('Eingabedaten sind ungültig');
@@ -350,7 +392,7 @@ router.put('/:id', [
 router.delete('/:id', [
   authenticateToken,
   requireSchoolOrAdmin
-], asyncHandler(async (req, res) => {
+], asyncHandler(async (req: Request, res: Response) => {
   const courseId = parseInt(req.params.id);
   if (isNaN(courseId)) {
     throw validationError('Ungültige Kurs-ID');
@@ -407,7 +449,7 @@ router.post('/:id/book', [
     .trim()
     .isLength({ max: 500 })
     .withMessage('Notizen zu lang')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     throw validationError('Eingabedaten sind ungültig');

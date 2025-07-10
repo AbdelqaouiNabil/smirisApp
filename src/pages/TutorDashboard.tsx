@@ -8,6 +8,9 @@ import {
   MessageCircle, TrendingUp, BookOpen, Award, Settings,
   Plus, Edit, Trash2, CheckCircle, AlertCircle, Eye
 } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import { tutorsApi, coursesApi } from '../lib/api'
+import React from 'react'
 
 moment.locale('de')
 const localizer = momentLocalizer(moment)
@@ -58,6 +61,7 @@ interface CourseOffering {
 
 export default function TutorDashboard() {
   const { toast } = useToast()
+  const { user } = useAuth()
   
   const [activeTab, setActiveTab] = useState('overview')
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -75,99 +79,103 @@ export default function TutorDashboard() {
   const [showCourseModal, setShowCourseModal] = useState(false)
   const [editingCourse, setEditingCourse] = useState<CourseOffering | null>(null)
 
+  // Course creation form state
+  const [newCourse, setNewCourse] = useState({
+    title: '',
+    description: '',
+    level: 'A1',
+    category: 'general',
+    price: 0,
+    duration_weeks: 1,
+    hours_per_week: 1,
+    max_students: 1,
+    start_date: '',
+    end_date: '',
+    is_online: true
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Add validation state
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const handleCourseInput = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target;
+    setNewCourse(prev => ({
+      ...prev,
+      [name]: type === 'number' ? Number(value) : value
+    }));
+  };
+
+  const handleCreateCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError(null);
+    // Simple validation
+    if (!newCourse.title.trim() || !newCourse.level || !newCourse.category || !newCourse.price || !newCourse.max_students) {
+      setFormError('Please fill in all required fields.');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await coursesApi.createTutorCourse(newCourse);
+      toast({ title: 'Kurs erfolgreich erstellt', variant: 'default' });
+      setShowCourseModal(false);
+      setNewCourse({
+        title: '', description: '', level: 'A1', category: 'general', price: 0,
+        duration_weeks: 1, hours_per_week: 1, max_students: 1, start_date: '', end_date: '', is_online: true
+      });
+      loadData();
+    } catch (error) {
+      setFormError(error.message || 'Fehler beim Erstellen des Kurses');
+      toast({ title: 'Fehler beim Erstellen des Kurses', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   useEffect(() => {
-    loadData()
-  }, [])
+    if (user && user.role === 'tutor') {
+      loadData()
+    }
+  }, [user])
 
   const loadData = async () => {
-    // Simulate loading data
-    const sampleBookings: Booking[] = [
-      {
-        id: 1,
-        studentName: 'Fatima Al-Zahra',
-        studentEmail: 'fatima@email.com',
-        date: '2025-06-29',
-        time: '14:00',
-        duration: 60,
-        subject: 'B2 Konversation',
-        type: '1-zu-1',
-        status: 'bestätigt',
-        price: 200,
-        notes: 'Fokus auf Aussprache'
-      },
-      {
-        id: 2,
-        studentName: 'Mohamed Benali',
-        studentEmail: 'mohamed@email.com',
-        date: '2025-06-30',
-        time: '16:00',
-        duration: 90,
-        subject: 'TestDaF Vorbereitung',
-        type: '1-zu-1',
-        status: 'bestätigt',
-        price: 300
-      },
-      {
-        id: 3,
-        studentName: 'Kleingruppe A2',
-        studentEmail: 'gruppe@email.com',
-        date: '2025-07-01',
-        time: '10:00',
-        duration: 120,
-        subject: 'A2 Grammatik',
-        type: 'Kleingruppe',
-        status: 'bestätigt',
-        price: 150
-      }
-    ]
-
-    const sampleCourses: CourseOffering[] = [
-      {
-        id: 1,
-        title: 'B2 Konversationstraining',
-        description: 'Intensive Gesprächsübungen für B2-Niveau',
-        type: '1-zu-1',
-        duration: 60,
-        price: 200,
-        maxStudents: 1,
-        isActive: true
-      },
-      {
-        id: 2,
-        title: 'TestDaF Prüfungsvorbereitung',
-        description: 'Umfassende Vorbereitung auf alle TestDaF-Bereiche',
-        type: 'Prüfungsvorbereitung',
-        duration: 90,
-        price: 300,
-        maxStudents: 1,
-        examType: 'TestDaF',
-        isActive: true
-      },
-      {
-        id: 3,
-        title: 'A2 Kleingruppe',
-        description: 'Interaktiver Gruppenunterricht für A2-Niveau',
-        type: 'Kleingruppe',
-        duration: 120,
-        price: 150,
-        maxStudents: 4,
-        isActive: true
-      }
-    ]
-
-    setBookings(sampleBookings)
-    setCourseOfferings(sampleCourses)
-
-    // Convert bookings to calendar events
-    const events: CalendarEvent[] = sampleBookings.map(booking => ({
-      id: booking.id,
-      title: `${booking.subject} - ${booking.studentName}`,
-      start: new Date(`${booking.date}T${booking.time}`),
-      end: new Date(new Date(`${booking.date}T${booking.time}`).getTime() + booking.duration * 60000),
-      resource: booking
-    }))
-
-    setCalendarEvents(events)
+    if (!user) return
+    try {
+      // Fetch real tutor data from backend
+      const response = await tutorsApi.getByUserId(user.id)
+      const tutor = response.tutor
+      // You may need to adjust the mapping below based on your backend response structure
+      setStats({
+        totalEarnings: 0,
+        monthlyEarnings: 0,
+        totalLessons: tutor.total_hours || 0,
+        monthlyLessons: 0,
+        averageRating: tutor.rating || 0,
+        responseRate: 0
+      })
+      // Fetch courses for this tutor
+      const coursesResponse = await coursesApi.getAll({ tutor_id: tutor.id });
+      setCourseOfferings(
+        (coursesResponse.courses || []).map(course => ({
+          id: course.id,
+          title: course.title,
+          description: course.description || '',
+          type: course.category === 'exam_prep' ? 'Prüfungsvorbereitung' : (course.max_students === 1 ? '1-zu-1' : 'Kleingruppe'),
+          duration: course.hours_per_week ? course.hours_per_week * (course.duration_weeks || 1) * 60 : 60,
+          price: course.price,
+          maxStudents: course.max_students || 1,
+          examType: course.level,
+          isActive: true // or course.is_active if available
+        }))
+      );
+      setBookings([]);
+      setCalendarEvents([]);
+    } catch (error) {
+      toast({
+        title: 'Fehler beim Laden der Tutor-Daten',
+        description: error.message || 'Bitte versuchen Sie es später erneut.',
+        variant: 'destructive'
+      })
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -475,6 +483,86 @@ export default function TutorDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-emerald-50 py-8 px-4">
+      {/* Course Creation Modal */}
+      {showCourseModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-lg relative">
+            <button onClick={() => setShowCourseModal(false)} className="absolute top-4 right-4 text-2xl text-gray-400 hover:text-gray-700 font-bold">×</button>
+            <h2 className="text-2xl font-bold mb-4">Create a new course offering</h2>
+            <form onSubmit={handleCreateCourse} className="space-y-4">
+              {formError && <div className="text-red-600 text-sm mb-2">{formError}</div>}
+              <div>
+                <label className="block text-sm font-medium mb-1">Title *</label>
+                <input name="title" value={newCourse.title} onChange={handleCourseInput} required placeholder="Course title" className="w-full border rounded px-3 py-2" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Description</label>
+                <textarea name="description" value={newCourse.description} onChange={handleCourseInput} placeholder="Description" className="w-full border rounded px-3 py-2" />
+              </div>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-1">Level *</label>
+                  <select name="level" value={newCourse.level} onChange={handleCourseInput} className="w-full border rounded px-3 py-2">
+                    <option value="A1">A1</option>
+                    <option value="A2">A2</option>
+                    <option value="B1">B1</option>
+                    <option value="B2">B2</option>
+                    <option value="C1">C1</option>
+                    <option value="C2">C2</option>
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-1">Category *</label>
+                  <select name="category" value={newCourse.category} onChange={handleCourseInput} className="w-full border rounded px-3 py-2">
+                    <option value="general">General</option>
+                    <option value="business">Business</option>
+                    <option value="exam_prep">Exam Preparation</option>
+                    <option value="conversation">Conversation</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-1">Price (MAD) *</label>
+                  <input name="price" type="number" value={newCourse.price} onChange={handleCourseInput} required min={1} className="w-full border rounded px-3 py-2" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-1">Max. participants *</label>
+                  <input name="max_students" type="number" value={newCourse.max_students} onChange={handleCourseInput} required min={1} className="w-full border rounded px-3 py-2" />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-1">Duration (weeks)</label>
+                  <input name="duration_weeks" type="number" value={newCourse.duration_weeks} onChange={handleCourseInput} min={1} className="w-full border rounded px-3 py-2" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-1">Hours per week</label>
+                  <input name="hours_per_week" type="number" value={newCourse.hours_per_week} onChange={handleCourseInput} min={1} className="w-full border rounded px-3 py-2" />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-1">Start date</label>
+                  <input name="start_date" type="date" value={newCourse.start_date} onChange={handleCourseInput} className="w-full border rounded px-3 py-2" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-1">End date</label>
+                  <input name="end_date" type="date" value={newCourse.end_date} onChange={handleCourseInput} className="w-full border rounded px-3 py-2" />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <input name="is_online" type="checkbox" checked={newCourse.is_online} onChange={e => setNewCourse(prev => ({ ...prev, is_online: e.target.checked }))} />
+                <label htmlFor="is_online">Online Course</label>
+              </div>
+              <button type="submit" disabled={isSubmitting} className="w-full bg-emerald-600 text-white py-2 rounded hover:bg-emerald-700 transition flex items-center justify-center">
+                {isSubmitting && <span className="loader mr-2" style={{ borderTopColor: 'white', borderWidth: 2, width: 16, height: 16, borderRadius: '50%', borderStyle: 'solid', borderColor: 'white transparent transparent transparent', display: 'inline-block', animation: 'spin 1s linear infinite' }} />}
+                {isSubmitting ? 'Saving...' : 'Create Course'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
       <div className="max-w-7xl mx-auto">
         
         {/* Header */}

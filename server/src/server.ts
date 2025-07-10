@@ -41,8 +41,14 @@ app.use(helmet({
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Zu viele Anfragen von dieser IP, bitte versuchen Sie es später erneut.'
+  max: process.env.NODE_ENV === 'production' ? 100 : 1000, // Much higher limit in development
+  message: 'Zu viele Anfragen von dieser IP, bitte versuchen Sie es später erneut.',
+  skip: (req) => {
+    // Skip rate limiting for health checks and in development
+    if (req.path === '/health') return true
+    if (process.env.NODE_ENV !== 'production') return true
+    return false
+  }
 });
 app.use('/api/', limiter);
 
@@ -50,8 +56,10 @@ app.use('/api/', limiter);
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
     ? ['https://ku19mpyoa0.space.minimax.io'] 
-    : ['http://localhost:3000', 'http://localhost:5173'],
-  credentials: true
+    : true, // Allow all origins in development
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 // Body parsing middleware

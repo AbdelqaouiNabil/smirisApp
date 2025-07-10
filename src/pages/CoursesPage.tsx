@@ -88,6 +88,12 @@ export default function CoursesPage() {
 
   const handleViewDetails = (courseId: number) => {
     console.log('Navigating to course details:', courseId)
+    
+    if (!courseId || isNaN(courseId)) {
+      console.error('Invalid course ID:', courseId)
+      return
+    }
+    
     navigate(`/courses/${courseId}`)
   }
 

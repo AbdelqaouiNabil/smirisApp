@@ -19,67 +19,70 @@ router.post(
     { name: 'cv', maxCount: 1 },
     { name: 'certificates', maxCount: 10 }
   ]),
-  [
-    body('firstName')
-      .trim()
-      .isLength({ min: 2, max: 50 })
-      .withMessage('Vorname muss zwischen 2 und 50 Zeichen lang sein'),
-    body('lastName')
-      .trim()
-      .isLength({ min: 2, max: 50 })
-      .withMessage('Nachname muss zwischen 2 und 50 Zeichen lang sein'),
-    body('email')
-      .isEmail()
-      .normalizeEmail()
-      .withMessage('Gültige E-Mail-Adresse erforderlich'),
-    body('phone')
-      .optional()
-      .isMobilePhone('any')
-      .withMessage('Ungültige Telefonnummer'),
-    body('city')
-      .trim()
-      .isLength({ min: 2, max: 100 })
-      .withMessage('Stadt muss zwischen 2 und 100 Zeichen lang sein'),
-    body('teachingExperience')
-      .isInt({ min: 0, max: 50 })
-      .withMessage('Erfahrungsjahre müssen zwischen 0 und 50 liegen'),
-    body('hourlyRate')
-      .isFloat({ min: 0 })
-      .withMessage('Stundensatz muss eine positive Zahl sein'),
-    body('specializations')
-      .isArray()
-      .withMessage('Spezialisierungen müssen ein Array sein'),
-    body('languages')
-      .isArray()
-      .withMessage('Sprachen müssen ein Array sein'),
-    body('qualifications')
-      .isArray()
-      .withMessage('Qualifikationen müssen ein Array sein'),
-    body('preparesForExams')
-      .isArray()
-      .withMessage('Prüfungsvorbereitungen müssen ein Array sein'),
-    body('availableFormats')
-      .isArray()
-      .withMessage('Verfügbare Formate müssen ein Array sein'),
-    body('maxStudentsPerGroup')
-      .isInt({ min: 1, max: 20 })
-      .withMessage('Maximale Studenten pro Gruppe muss zwischen 1 und 20 liegen'),
-    body('teachingPhilosophy')
-      .optional()
-      .trim()
-      .isLength({ max: 1000 })
-      .withMessage('Lehrphilosophie zu lang'),
-    body('termsAccepted')
-      .isBoolean()
-      .withMessage('Bedingungen müssen akzeptiert werden'),
-    body('dataProcessingAccepted')
-      .isBoolean()
-      .withMessage('Datenverarbeitung muss akzeptiert werden')
-  ],
+  // Removed express-validator array and boolean checks for multipart fields
   asyncHandler(async (req: Request, res: Response) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      throw validationError('Eingabedaten sind ungültig: ' + errors.array().map(e => e.msg).join(', '));
+    // Parse JSON fields sent as strings
+    let specializations, languages, qualifications, preparesForExams, availableFormats;
+    try {
+      specializations = JSON.parse(req.body.specializations || '[]');
+      languages = JSON.parse(req.body.languages || '[]');
+      qualifications = JSON.parse(req.body.qualifications || '[]');
+      preparesForExams = JSON.parse(req.body.preparesForExams || '[]');
+      availableFormats = JSON.parse(req.body.availableFormats || '[]');
+    } catch (e) {
+      throw new AppError('Fehler beim Parsen der Array-Felder', 400);
+    }
+
+    // Manual validation for required fields
+    const {
+      firstName, lastName, email, phone, city, teachingExperience, hourlyRate,
+      maxStudentsPerGroup, teachingPhilosophy, termsAccepted, dataProcessingAccepted
+    } = req.body;
+
+    if (!firstName || firstName.length < 2 || firstName.length > 50) {
+      throw new AppError('Vorname muss zwischen 2 und 50 Zeichen lang sein', 400);
+    }
+    if (!lastName || lastName.length < 2 || lastName.length > 50) {
+      throw new AppError('Nachname muss zwischen 2 und 50 Zeichen lang sein', 400);
+    }
+    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      throw new AppError('Gültige E-Mail-Adresse erforderlich', 400);
+    }
+    if (!city || city.length < 2 || city.length > 100) {
+      throw new AppError('Stadt muss zwischen 2 und 100 Zeichen lang sein', 400);
+    }
+    if (isNaN(Number(teachingExperience)) || Number(teachingExperience) < 0 || Number(teachingExperience) > 50) {
+      throw new AppError('Erfahrungsjahre müssen zwischen 0 und 50 liegen', 400);
+    }
+    if (isNaN(Number(hourlyRate)) || Number(hourlyRate) < 0) {
+      throw new AppError('Stundensatz muss eine positive Zahl sein', 400);
+    }
+    if (!Array.isArray(specializations)) {
+      throw new AppError('Spezialisierungen müssen ein Array sein', 400);
+    }
+    if (!Array.isArray(languages)) {
+      throw new AppError('Sprachen müssen ein Array sein', 400);
+    }
+    if (!Array.isArray(qualifications)) {
+      throw new AppError('Qualifikationen müssen ein Array sein', 400);
+    }
+    if (!Array.isArray(preparesForExams)) {
+      throw new AppError('Prüfungsvorbereitungen müssen ein Array sein', 400);
+    }
+    if (!Array.isArray(availableFormats)) {
+      throw new AppError('Verfügbare Formate müssen ein Array sein', 400);
+    }
+    if (isNaN(Number(maxStudentsPerGroup)) || Number(maxStudentsPerGroup) < 1 || Number(maxStudentsPerGroup) > 20) {
+      throw new AppError('Maximale Studenten pro Gruppe muss zwischen 1 und 20 liegen', 400);
+    }
+    if (teachingPhilosophy && teachingPhilosophy.length > 1000) {
+      throw new AppError('Lehrphilosophie zu lang', 400);
+    }
+    if (termsAccepted !== 'true') {
+      throw new AppError('Bedingungen müssen akzeptiert werden', 400);
+    }
+    if (dataProcessingAccepted !== 'true') {
+      throw new AppError('Datenverarbeitung muss akzeptiert werden', 400);
     }
 
     // Handle uploaded files
@@ -88,22 +91,6 @@ router.post(
     const photo = files?.photo?.[0] || null;
     const cv = files?.cv?.[0] || null;
     const certificates = files?.certificates || [];
-
-    // Parse JSON fields sent as strings
-    const specializations = JSON.parse(req.body.specializations || '[]');
-    const languages = JSON.parse(req.body.languages || '[]');
-    const qualifications = JSON.parse(req.body.qualifications || '[]');
-    const preparesForExams = JSON.parse(req.body.preparesForExams || '[]');
-    const availableFormats = JSON.parse(req.body.availableFormats || '[]');
-
-    const {
-      firstName, lastName, email, phone, city, teachingExperience, hourlyRate,
-      maxStudentsPerGroup, teachingPhilosophy, termsAccepted, dataProcessingAccepted
-    } = req.body;
-
-    if (!termsAccepted || !dataProcessingAccepted) {
-      throw new AppError('Bedingungen und Datenverarbeitung müssen akzeptiert werden', 400);
-    }
 
     // Check if email already exists
     const existingUser = await query('SELECT id FROM users WHERE email = $1', [email]);
@@ -327,8 +314,15 @@ router.get('/:id', optionalAuth, asyncHandler(async (req: Request, res: Response
     [tutorId]
   );
 
+  // Fetch tutor's courses
+  const coursesResult = await query(
+    'SELECT * FROM courses WHERE tutor_id = $1',
+    [tutorId]
+  );
+
   res.json({
     tutor,
+    courses: coursesResult.rows,
     reviews: reviewsResult.rows,
     bookedSlots: availabilityResult.rows
   });
@@ -650,6 +644,18 @@ router.post('/:id/reviews', [
     message: 'Bewertung erfolgreich hinzugefügt',
     review: result.rows[0]
   });
+}));
+
+// Fetch tutor by user_id
+router.get('/by-user/:userId', asyncHandler(async (req: Request, res: Response) => {
+  const userId = parseInt(req.params.userId);
+  if (isNaN(userId)) throw validationError('Ungültige User-ID');
+  const result = await query(
+    `SELECT * FROM tutors WHERE user_id = $1`,
+    [userId]
+  );
+  if (result.rows.length === 0) throw new AppError('Tutor nicht gefunden', 404);
+  res.json({ tutor: result.rows[0] });
 }));
 
 export default router;

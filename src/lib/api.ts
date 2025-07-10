@@ -163,13 +163,15 @@ class ApiClient {
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`
     
+    // Always get the latest token from localStorage
+    const latestToken = localStorage.getItem('auth_token');
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...((options.headers as Record<string, string>) || {})
     }
 
-    if (this.token) {
-      headers.Authorization = `Bearer ${this.token}`
+    if (latestToken) {
+      headers.Authorization = `Bearer ${latestToken}`
     }
 
     const config: RequestInit = {
@@ -297,7 +299,10 @@ export const schoolsApi = {
     apiClient.put<{ school: School }>(`/schools/${id}`, data),
   
   delete: (id: number) =>
-    apiClient.delete(`/schools/${id}`)
+    apiClient.delete(`/schools/${id}`),
+  
+  getByUserId: (userId: number) =>
+    apiClient.get<{ school: School }>(`/schools/by-user/${userId}`)
 }
 
 export const coursesApi = {
@@ -307,6 +312,7 @@ export const coursesApi = {
     level?: string
     category?: string
     school_id?: number
+    tutor_id?: number
     min_price?: number
     max_price?: number
     is_online?: boolean
@@ -324,7 +330,10 @@ export const coursesApi = {
     apiClient.put<{ course: Course }>(`/courses/${id}`, data),
   
   delete: (id: number) =>
-    apiClient.delete(`/courses/${id}`)
+    apiClient.delete(`/courses/${id}`),
+  
+  createTutorCourse: (data: any) =>
+    apiClient.post<{ course: Course }>('/courses/tutor', data)
 }
 
 export const tutorsApi = {
@@ -340,7 +349,7 @@ export const tutorsApi = {
     apiClient.get<{ tutors: Tutor[]; pagination: any }>('/tutors', params),
   
   getById: (id: number) =>
-    apiClient.get<{ tutor: Tutor; reviews: any[]; bookedSlots: any[] }>(`/tutors/${id}`),
+    apiClient.get<{ tutor: Tutor; reviews: any[]; bookedSlots: any[]; courses: Course[] }>(`/tutors/${id}`),
   
   registerTutor: (formData: FormData) =>
     apiClient.post<{ tutor: Tutor; user: any }>('/tutors/register', formData),
@@ -352,7 +361,10 @@ export const tutorsApi = {
     apiClient.put<{ tutor: Tutor }>('/tutors/profile', data),
   
   updateAvailability: (data: any) =>
-    apiClient.put('/tutors/availability', data)
+    apiClient.put('/tutors/availability', data),
+  
+  getByUserId: (userId: number) =>
+    apiClient.get<{ tutor: Tutor }>(`/tutors/by-user/${userId}`)
 }
 
 export const visaApi = {

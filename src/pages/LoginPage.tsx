@@ -36,8 +36,12 @@ export default function LoginPage() {
             navigate('/tutor-dashboard')
           } else if (userData.role === 'school') {
             navigate('/school-dashboard')
+          } else if (userData.role === 'admin') {
+            navigate('/admin')
+          } else if (userData.role === 'student') {
+            navigate('/') // Redirect students to homepage to see courses
           } else {
-            navigate('/dashboard')
+            navigate('/') // Default to homepage for any other roles
           }
         } else {
           setError('Ungültige Anmeldedaten')
@@ -61,7 +65,13 @@ export default function LoginPage() {
         // For other roles, proceed with normal registration
         success = await register(formData.name, formData.email, formData.password, formData.role)
         if (success) {
-          navigate('/dashboard')
+          if (formData.role === 'student') {
+            navigate('/') // Redirect students to homepage
+          } else if (formData.role === 'admin') {
+            navigate('/admin')
+          } else {
+            navigate('/') // Default to homepage
+          }
         } else {
           setError('Registrierung fehlgeschlagen')
         }
@@ -93,7 +103,17 @@ export default function LoginPage() {
       const success = await login(user.email, 'oauth2_google_login')
       
       if (success) {
-        navigate('/dashboard')
+        // Check user role and redirect appropriately
+        const userData = JSON.parse(localStorage.getItem('auth_user') || '{}');
+        if (userData.role === 'tutor') {
+          navigate('/tutor-dashboard')
+        } else if (userData.role === 'school') {
+          navigate('/school-dashboard')
+        } else if (userData.role === 'admin') {
+          navigate('/admin')
+        } else {
+          navigate('/') // Students and others go to homepage
+        }
       } else {
         setError('Google-Anmeldung fehlgeschlagen')
       }
@@ -115,7 +135,17 @@ export default function LoginPage() {
       const success = await login(user.email, 'oauth2_facebook_login')
       
       if (success) {
-        navigate('/dashboard')
+        // Check user role and redirect appropriately
+        const userData = JSON.parse(localStorage.getItem('auth_user') || '{}');
+        if (userData.role === 'tutor') {
+          navigate('/tutor-dashboard')
+        } else if (userData.role === 'school') {
+          navigate('/school-dashboard')
+        } else if (userData.role === 'admin') {
+          navigate('/admin')
+        } else {
+          navigate('/') // Students and others go to homepage
+        }
       } else {
         setError('Facebook-Anmeldung fehlgeschlagen')
       }
@@ -137,7 +167,17 @@ export default function LoginPage() {
       const success = await login(user.email, 'oauth2_github_login')
       
       if (success) {
-        navigate('/dashboard')
+        // Check user role and redirect appropriately
+        const userData = JSON.parse(localStorage.getItem('auth_user') || '{}');
+        if (userData.role === 'tutor') {
+          navigate('/tutor-dashboard')
+        } else if (userData.role === 'school') {
+          navigate('/school-dashboard')
+        } else if (userData.role === 'admin') {
+          navigate('/admin')
+        } else {
+          navigate('/') // Students and others go to homepage
+        }
       } else {
         setError('GitHub-Anmeldung fehlgeschlagen')
       }

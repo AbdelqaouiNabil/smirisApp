@@ -142,7 +142,7 @@ const StudentRegistrationPage = () => {
           title: "تم التسجيل بنجاح! | Inscription réussie!",
           description: "مرحباً بك في Germansphere | Bienvenue chez Germansphere",
         })
-        navigate('/dashboard')
+        navigate('/') // Redirect students to homepage to see courses
       } else {
         toast({
           title: "خطأ في التسجيل | Erreur d'inscription",

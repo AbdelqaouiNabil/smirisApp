@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { BookOpen, Users, Award, Star, Clock, CheckCircle, ArrowRight, Search, Filter, Calendar } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
 
 export default function MVPHomepage() {
   const { t } = useTranslation('homepage')
+  const { user, isAuthenticated } = useAuth()
 
   // MVP Core Features - nur die 3 wichtigsten
   const coreFeatures = [
@@ -51,6 +53,20 @@ export default function MVPHomepage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50">
+      
+      {/* Welcome Message for Students */}
+      {isAuthenticated && user?.role === 'student' && (
+        <div className="bg-gradient-to-r from-emerald-600 to-blue-600 text-white py-4 px-4">
+          <div className="max-w-4xl mx-auto text-center">
+            <p className="text-lg font-medium">
+              🎉 Willkommen zurück, {user.name || user.firstName}! 
+              <span className="font-normal ml-2">
+                Entdecke Kurse, buche Tutoren und vergleiche Schulen - alles ohne Einschränkungen!
+              </span>
+            </p>
+          </div>
+        </div>
+      )}
       
       {/* Hero Section - MVP Focused */}
       <section className="relative py-20 px-4 text-center">

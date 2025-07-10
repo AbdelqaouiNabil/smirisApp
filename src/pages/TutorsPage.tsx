@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Calendar, momentLocalizer } from 'react-big-calendar'
 import moment from 'moment'
 import 'moment/locale/de'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../hooks/use-toast'
@@ -34,6 +35,7 @@ export default function TutorsPage() {
   const { t } = useTranslation('tutors')
   const { user } = useAuth()
   const { toast } = useToast()
+  const navigate = useNavigate()
   const [tutors, setTutors] = useState<Tutor[]>([])
   const [filteredTutors, setFilteredTutors] = useState<Tutor[]>([])
   const [availability, setAvailability] = useState<Availability[]>([])
@@ -133,6 +135,12 @@ export default function TutorsPage() {
   }
 
   const handleBookTutor = (tutor: Tutor) => {
+    if (!user) {
+      // Redirect to login page if user is not authenticated
+      navigate('/login')
+      return
+    }
+    
     setSelectedTutor(tutor)
     setBookingData({
       tutorId: tutor.id,
@@ -533,26 +541,38 @@ export default function TutorsPage() {
 
                   <h3 className="text-lg font-semibold mb-3">Verfügbarkeit diese Woche</h3>
                   <div className="bg-gray-50 p-4 rounded-lg mb-6">
-                    {Object.entries(selectedTutor.availability).map(([day, slots]) => (
-                      <div key={day} className="flex justify-between py-2 border-b border-gray-200 last:border-b-0">
-                        <span className="capitalize font-medium">
-                          {day === 'monday' ? 'Montag' :
-                           day === 'tuesday' ? 'Dienstag' :
-                           day === 'wednesday' ? 'Mittwoch' :
-                           day === 'thursday' ? 'Donnerstag' :
-                           day === 'friday' ? 'Freitag' :
-                           day === 'saturday' ? 'Samstag' : 'Sonntag'}
-                        </span>
-                        <span className="text-gray-600">
-                          {slots.length > 0 ? `${slots[0]} - ${slots[slots.length - 1]}` : 'Nicht verfügbar'}
-                        </span>
+                    {selectedTutor.availability && Object.keys(selectedTutor.availability).length > 0 ? (
+                      Object.entries(selectedTutor.availability).map(([day, slots]) => (
+                        <div key={day} className="flex justify-between py-2 border-b border-gray-200 last:border-b-0">
+                          <span className="capitalize font-medium">
+                            {day === 'monday' ? 'Montag' :
+                             day === 'tuesday' ? 'Dienstag' :
+                             day === 'wednesday' ? 'Mittwoch' :
+                             day === 'thursday' ? 'Donnerstag' :
+                             day === 'friday' ? 'Freitag' :
+                             day === 'saturday' ? 'Samstag' : 'Sonntag'}
+                          </span>
+                          <span className="text-gray-600">
+                            {Array.isArray(slots) && slots.length > 0 ? `${slots[0]} - ${slots[slots.length - 1]}` : 'Nicht verfügbar'}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-4 text-gray-500">
+                        Verfügbarkeit wird noch aktualisiert
                       </div>
-                    ))}
+                    )}
                   </div>
 
                   <div className="flex space-x-3">
                     <button
                       onClick={() => {
+                        if (!user) {
+                          // Redirect to login page if user is not authenticated
+                          navigate('/login')
+                          return
+                        }
+                        
                         setShowBookingModal(true)
                         setBookingData({
                           tutorId: selectedTutor.id,

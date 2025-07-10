@@ -20,6 +20,9 @@ import {
   Upload,
   Save
 } from 'lucide-react'
+import { schoolsApi } from '../lib/api'
+import { coursesApi } from '../lib/api'
+import React from 'react'
 
 interface SchoolStats {
   totalCourses: number
@@ -102,6 +105,11 @@ const SchoolDashboard = () => {
     endDate: ''
   })
 
+  const [showEditCourseModal, setShowEditCourseModal] = useState(false)
+  const [editCourseData, setEditCourseData] = useState<Partial<Course> | null>(null)
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [editFormError, setEditFormError] = useState<string | null>(null)
+
   useEffect(() => {
     if (!canManageSchool()) {
       toast({
@@ -116,78 +124,43 @@ const SchoolDashboard = () => {
 
   const loadSchoolData = async () => {
     try {
-      // Simuliere School-Daten basierend auf dem eingeloggten User
-      const mockSchoolInfo: SchoolInfo = {
-        id: 1,
-        name: user?.role === 'school' ? user.name : 'Goethe Institut Casablanca',
-        address: 'Rue de la Liberté 123, Casablanca',
-        city: 'Casablanca',
-        phone: '+212 522 123 456',
-        email: user?.email || 'contact@goethe-casa.com',
-        website: 'www.goethe-casa.com',
-        description: 'Führende deutsche Sprachschule in Marokko mit über 20 Jahren Erfahrung.',
-        certifications: ['Goethe Institut', 'CEFR zertifiziert', 'ISO 9001'],
-        images: ['/images/school-casablanca.jpg']
-      }
-      setSchoolInfo(mockSchoolInfo)
-
-      // Simuliere Kursdaten
-      const mockCourses: Course[] = [
-        {
-          id: 1,
-          title: 'Deutsch A1 Intensivkurs',
-          level: 'A1',
-          price: 2500,
-          duration: '8 Wochen',
-          maxStudents: 15,
-          currentStudents: 12,
-          status: 'active',
-          startDate: '2025-07-01',
-          endDate: '2025-08-26',
-          schedule: 'Mo-Fr 9:00-11:00',
-          description: 'Intensiver Deutschkurs für Anfänger'
-        },
-        {
-          id: 2,
-          title: 'Business Deutsch B2',
-          level: 'B2',
-          price: 3200,
-          duration: '12 Wochen',
-          maxStudents: 12,
-          currentStudents: 8,
-          status: 'active',
-          startDate: '2025-06-15',
-          endDate: '2025-09-07',
-          schedule: 'Di/Do 18:00-20:00',
-          description: 'Geschäftsdeutsch für Berufstätige'
-        },
-        {
-          id: 3,
-          title: 'Deutsch A2 Abendkurs',
-          level: 'A2',
-          price: 2800,
-          duration: '10 Wochen',
-          maxStudents: 18,
-          currentStudents: 18,
-          status: 'full',
-          startDate: '2025-06-01',
-          endDate: '2025-08-10',
-          schedule: 'Mo/Mi/Fr 19:00-21:00',
-          description: 'Deutscher Grundkurs für Berufstätige'
-        }
-      ]
-      setCourses(mockCourses)
-
-      // Simuliere Statistiken
-      setStats({
-        totalCourses: mockCourses.length,
-        totalStudents: mockCourses.reduce((sum, course) => sum + course.currentStudents, 0),
-        monthlyBookings: 45,
-        monthlyRevenue: 125600,
-        averageRating: 4.7,
-        pendingRequests: 12
+      // Fetch real school data for the logged-in user
+      const response = await schoolsApi.getByUserId(user.id)
+      const realSchool = response.school
+      setSchoolInfo({
+        id: realSchool.id,
+        name: realSchool.name,
+        address: realSchool.address || '',
+        city: realSchool.location || '',
+        phone: realSchool.phone || '',
+        email: realSchool.email || '',
+        website: realSchool.website || '',
+        description: realSchool.description || '',
+        certifications: realSchool.certifications || [],
+        images: [] // Remove or set to [] since images is not in School type
       })
-
+      // Optionally, fetch courses for this school
+      const coursesResponse = await coursesApi.getAll({ school_id: realSchool.id })
+      setCourses((coursesResponse.courses || []).map(course => ({
+        id: course.id,
+        title: course.title,
+        level: course.level,
+        price: course.price,
+        duration: course.duration_weeks ? `${course.duration_weeks} Wochen` : '',
+        maxStudents: course.max_students || 0,
+        currentStudents: course.enrolled_students || 0,
+        status: 'active', // You can improve this logic
+        startDate: course.start_date,
+        endDate: course.end_date || '',
+        schedule: course.schedule || '',
+        description: course.description || ''
+      })))
+      // Optionally, update stats
+      setStats(prev => ({
+        ...prev,
+        totalCourses: coursesResponse.courses.length,
+        totalStudents: coursesResponse.courses.reduce((sum, c) => sum + (c.enrolled_students || 0), 0)
+      }))
     } catch (error) {
       console.error('Error loading school data:', error)
       toast({
@@ -258,6 +231,47 @@ const SchoolDashboard = () => {
       title: "Informationen gespeichert",
       description: "Ihre Schulinformationen wurden aktualisiert",
     })
+  }
+
+  const handleEditCourse = (course: Course) => {
+    setEditCourseData(course)
+    setShowEditCourseModal(true)
+    setEditFormError(null)
+  }
+
+  const handleEditCourseInput = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target
+    setEditCourseData(prev => ({
+      ...prev!,
+      [name]: type === 'number' ? Number(value) : value
+    }))
+  }
+
+  const handleUpdateCourse = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setEditFormError(null)
+    if (!editCourseData?.id || !editCourseData.title || !editCourseData.level || !editCourseData.price) {
+      setEditFormError('Please fill in all required fields.')
+      return
+    }
+    setIsUpdating(true)
+    try {
+      // Cast level to correct type for API
+      const updateData = {
+        ...editCourseData,
+        level: editCourseData.level as 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2',
+      }
+      await coursesApi.update(editCourseData.id, updateData)
+      toast({ title: 'Kurs erfolgreich aktualisiert', variant: 'default' })
+      setShowEditCourseModal(false)
+      setEditCourseData(null)
+      loadSchoolData()
+    } catch (error) {
+      setEditFormError(error.message || 'Fehler beim Aktualisieren des Kurses')
+      toast({ title: 'Fehler beim Aktualisieren des Kurses', description: error.message, variant: 'destructive' })
+    } finally {
+      setIsUpdating(false)
+    }
   }
 
   const renderOverviewTab = () => (
@@ -401,7 +415,7 @@ const SchoolDashboard = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => setEditingCourse(course)}
+                  onClick={() => handleEditCourse(course)}
                   className="text-blue-600 hover:text-blue-700"
                 >
                   <Edit className="w-4 h-4" />
@@ -708,7 +722,7 @@ const SchoolDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -763,6 +777,72 @@ const SchoolDashboard = () => {
           </div>
         </div>
       </div>
+      {/* Edit Course Modal */}
+      {showEditCourseModal && editCourseData && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-lg relative">
+            <button onClick={() => setShowEditCourseModal(false)} className="absolute top-4 right-4 text-2xl text-gray-400 hover:text-gray-700 font-bold">×</button>
+            <h2 className="text-2xl font-bold mb-4">Kurs bearbeiten</h2>
+            <form onSubmit={handleUpdateCourse} className="space-y-4">
+              {editFormError && <div className="text-red-600 text-sm mb-2">{editFormError}</div>}
+              <div>
+                <label className="block text-sm font-medium mb-1">Titel *</label>
+                <input name="title" value={editCourseData.title || ''} onChange={handleEditCourseInput} required className="w-full border rounded px-3 py-2" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Beschreibung</label>
+                <textarea name="description" value={editCourseData.description || ''} onChange={handleEditCourseInput} className="w-full border rounded px-3 py-2" />
+              </div>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-1">Level *</label>
+                  <select
+                    name="level"
+                    value={editCourseData.level || ''}
+                    onChange={handleEditCourseInput}
+                    required
+                    className="w-full border rounded px-3 py-2"
+                  >
+                    <option value="A1">A1 - Anfänger</option>
+                    <option value="A2">A2 - Grundkenntnisse</option>
+                    <option value="B1">B1 - Fortgeschritten</option>
+                    <option value="B2">B2 - Selbständig</option>
+                    <option value="C1">C1 - Kompetent</option>
+                    <option value="C2">C2 - Muttersprachlich</option>
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-1">Preis (MAD) *</label>
+                  <input name="price" type="number" value={editCourseData.price || 0} onChange={handleEditCourseInput} required min={1} className="w-full border rounded px-3 py-2" />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-1">Max. Teilnehmer</label>
+                  <input name="max_students" type="number" value={editCourseData.maxStudents || 0} onChange={handleEditCourseInput} min={1} className="w-full border rounded px-3 py-2" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-1">Dauer (Wochen)</label>
+                  <input name="duration" value={editCourseData.duration || ''} onChange={handleEditCourseInput} className="w-full border rounded px-3 py-2" />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-1">Startdatum</label>
+                  <input name="startDate" type="date" value={editCourseData.startDate || ''} onChange={handleEditCourseInput} className="w-full border rounded px-3 py-2" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-1">Enddatum</label>
+                  <input name="endDate" type="date" value={editCourseData.endDate || ''} onChange={handleEditCourseInput} className="w-full border rounded px-3 py-2" />
+                </div>
+              </div>
+              <button type="submit" disabled={isUpdating} className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition flex items-center justify-center">
+                {isUpdating ? 'Speichern...' : 'Kurs aktualisieren'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
