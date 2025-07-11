@@ -151,7 +151,16 @@ docker run -p 3000:3000 -p 5000:5000 smiris-app
 
 ## 📈 Recent Updates
 
-### Latest Features (v1.0.0)
+### Latest Features (v1.0.1)
+- ✅ Implemented comprehensive booking system for tutors
+- ✅ Added profile dropdown menu with enhanced navigation
+- ✅ Improved dashboard with comprehensive bookings view
+- ✅ Added URL-based tab navigation system
+- ✅ Enhanced UI with proper styling and icons
+- ✅ Integrated user profile information display
+- ✅ Added subject selection for bookings
+
+### Previous Updates (v1.0.0)
 - ✅ Course editing functionality in School Dashboard
 - ✅ Real data integration for Tutor and School dashboards
 - ✅ Authentication token handling improvements
