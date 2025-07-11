@@ -86,7 +86,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/schools', schoolRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/tutors', tutorRoutes);
-app.use('/api/bookings', authenticateToken, bookingRoutes);
+app.use('/api/bookings', bookingRoutes);
 app.use('/api/payments', authenticateToken, paymentRoutes);
 app.use('/api/visa', visaRoutes);
 app.use('/api/admin', authenticateToken, adminRoutes);

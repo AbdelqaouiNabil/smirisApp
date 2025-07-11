@@ -73,8 +73,8 @@ router.post('/register', [
       role: user.role,
       createdAt: user.created_at
     },
-    token,
-    refreshToken
+    access_token: token,
+    refresh_token: refreshToken
   });
 }));
 
@@ -138,8 +138,8 @@ router.post('/login', [
       email: user.email,
       role: user.role
     },
-    token,
-    refreshToken
+    access_token: token,
+    refresh_token: refreshToken
   });
 }));
 

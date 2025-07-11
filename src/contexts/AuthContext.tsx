@@ -101,16 +101,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // 1. Call backend API
       const response = await authApi.login({ email, password })
       
-      // 2. Store JWT token
-      authApi.setToken(response.access_token)
+      // Debug: Log the response to see what we're getting
+      console.log('Login response:', response)
+      console.log('Access token:', response.access_token)
+      
+      // 2. Store JWT token - ensure it's stored correctly
+      const token = response.access_token
+      if (token) {
+        localStorage.setItem('auth_token', token)
+        authApi.setToken(token)
+        console.log('Token stored successfully')
+      } else {
+        console.error('No access token received from backend')
+      }
       
       // 3. Store user object in localStorage
-      localStorage.setItem('auth_user', JSON.stringify(response.user))
+      localStorage.setItem('germansphere_user', JSON.stringify(response.user))
       
       setUser(response.user)
       setIsLoading(false)
       return true
     } catch (err) {
+      console.error('Login error:', err)
       setIsLoading(false)
       return false
     }
@@ -122,8 +134,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await authApi.register({ name, email, password, role })
       
-      // Set the token for future requests
-      authApi.setToken(response.access_token)
+      // Set the token for future requests - ensure it's stored correctly
+      const token = response.access_token
+      localStorage.setItem('auth_token', token)
+      authApi.setToken(token)
       
       // Store the user data
       setUser(response.user)
@@ -154,8 +168,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       const response = await authApi.register(registrationData)
       
-      // Set the token for future requests
-      authApi.setToken(response.access_token)
+      // Set the token for future requests - ensure it's stored correctly
+      const token = response.access_token
+      localStorage.setItem('auth_token', token)
+      authApi.setToken(token)
       
       // Store the user data with additional fields
       const userWithExtras = {

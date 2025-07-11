@@ -116,6 +116,7 @@ CREATE TABLE bookings (
   total_price DECIMAL(10,2),
   currency VARCHAR(3) DEFAULT 'MAD',
   payment_status VARCHAR(20) DEFAULT 'pending', -- 'pending', 'paid', 'failed', 'refunded'
+  subject VARCHAR(200), -- Thema/Schwerpunkt der Buchung
   notes TEXT,
   meeting_link VARCHAR(255),
   is_recurring BOOLEAN DEFAULT FALSE,
@@ -259,3 +260,17 @@ JOIN users u ON t.user_id = u.id
 WHERE u.is_active = TRUE AND t.is_available = TRUE;
 
 ALTER TABLE tutors ADD COLUMN photo_path TEXT;
+
+-- Add subject column to bookings table if it doesn't exist
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_name = 'bookings' 
+        AND column_name = 'subject'
+    ) THEN
+        ALTER TABLE bookings 
+        ADD COLUMN subject VARCHAR(200);
+    END IF;
+END $$;

@@ -6,11 +6,12 @@ import { useToast } from '../hooks/use-toast'
 import { 
   Calendar as CalendarIcon, Users, Euro, Star, Clock, 
   MessageCircle, TrendingUp, BookOpen, Award, Settings,
-  Plus, Edit, Trash2, CheckCircle, AlertCircle, Eye
+  Plus, Edit, Trash2, CheckCircle, AlertCircle, Eye, CalendarClock
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { tutorsApi, coursesApi } from '../lib/api'
 import React from 'react'
+import { TutorAvailability } from '../components/TutorAvailability'
 
 moment.locale('de')
 const localizer = momentLocalizer(moment)
@@ -472,11 +473,18 @@ export default function TutorDashboard() {
     </div>
   )
 
+  const renderAvailability = () => (
+    <div className="space-y-8">
+      <TutorAvailability />
+    </div>
+  )
+
   const tabs = [
     { id: 'overview', label: 'Übersicht', icon: TrendingUp },
     { id: 'bookings', label: 'Buchungen', icon: CalendarIcon },
     { id: 'courses', label: 'Kursangebote', icon: BookOpen },
     { id: 'calendar', label: 'Kalender', icon: Clock },
+    { id: 'availability', label: 'Verfügbarkeit', icon: CalendarClock },
     { id: 'earnings', label: 'Einnahmen', icon: Euro },
     { id: 'settings', label: 'Einstellungen', icon: Settings }
   ]
@@ -613,6 +621,7 @@ export default function TutorDashboard() {
               <p className="text-gray-600">Profil- und Kontoeinstellungen werden in der nächsten Version verfügbar sein.</p>
             </div>
           )}
+          {activeTab === 'availability' && renderAvailability()}
         </div>
 
       </div>

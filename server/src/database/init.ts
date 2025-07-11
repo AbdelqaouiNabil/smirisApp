@@ -12,6 +12,21 @@ const initializeDatabase = async () => {
       throw new Error('Datenbankverbindung fehlgeschlagen');
     }
 
+    // Drop existing tables
+    console.log('🗑️ Entferne bestehende Tabellen...');
+    await pool.query(`
+      DROP TABLE IF EXISTS messages CASCADE;
+      DROP TABLE IF EXISTS reviews CASCADE;
+      DROP TABLE IF EXISTS payments CASCADE;
+      DROP TABLE IF EXISTS bookings CASCADE;
+      DROP TABLE IF EXISTS visa_services CASCADE;
+      DROP TABLE IF EXISTS courses CASCADE;
+      DROP TABLE IF EXISTS tutors CASCADE;
+      DROP TABLE IF EXISTS schools CASCADE;
+      DROP TABLE IF EXISTS users CASCADE;
+    `);
+    console.log('✅ Bestehende Tabellen entfernt');
+
     // Schema-Datei lesen
     const schemaPath = path.join(__dirname, 'schema.sql');
     const schemaSQL = fs.readFileSync(schemaPath, 'utf8');

@@ -8,6 +8,7 @@ const router = express.Router();
 
 // Alle Buchungen für den aktuellen Benutzer abrufen
 router.get('/', [
+  authenticateToken,
   expressQuery('page').optional().isInt({ min: 1 }).withMessage('Ungültige Seitenzahl'),
   expressQuery('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Ungültiges Limit'),
   expressQuery('status').optional().isIn(['pending', 'confirmed', 'cancelled', 'completed']).withMessage('Ungültiger Status'),
@@ -118,7 +119,7 @@ router.get('/', [
 }));
 
 // Einzelne Buchung abrufen
-router.get('/:id', asyncHandler(async (req, res) => {
+router.get('/:id', authenticateToken, asyncHandler(async (req, res) => {
   const bookingId = parseInt(req.params.id);
   if (isNaN(bookingId)) {
     throw validationError('Ungültige Buchungs-ID');
@@ -162,6 +163,171 @@ router.get('/:id', asyncHandler(async (req, res) => {
   }
 
   res.json({ booking });
+}));
+
+// Neue Buchung erstellen
+router.post('/', [
+  authenticateToken,
+  body('booking_type')
+    .isIn(['course', 'tutor', 'visa'])
+    .withMessage('Ungültiger Buchungstyp'),
+  body('course_id')
+    .optional()
+    .isInt()
+    .withMessage('Ungültige Kurs-ID'),
+  body('tutor_id')
+    .optional()
+    .isInt()
+    .withMessage('Ungültige Tutor-ID'),
+  body('start_date')
+    .isISO8601()
+    .withMessage('Ungültiges Startdatum'),
+  body('time_slot')
+    .matches(/^\d{2}:\d{2}$/)
+    .withMessage('Ungültige Uhrzeit (Format: HH:MM)'),
+  body('duration_minutes')
+    .isInt({ min: 30, max: 240 })
+    .withMessage('Dauer muss zwischen 30 und 240 Minuten liegen'),
+  body('subject')
+    .trim()
+    .isLength({ min: 3, max: 200 })
+    .withMessage('Thema muss zwischen 3 und 200 Zeichen lang sein'),
+  body('notes')
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Notizen zu lang')
+], asyncHandler(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw validationError('Eingabedaten sind ungültig');
+  }
+
+  const {
+    booking_type,
+    course_id,
+    tutor_id,
+    start_date,
+    time_slot,
+    duration_minutes,
+    subject,
+    notes
+  } = req.body;
+
+  const student_id = req.user!.id;
+
+  // Validierung basierend auf Buchungstyp
+  if (booking_type === 'tutor' && !tutor_id) {
+    throw new AppError('Tutor-ID ist für Tutor-Buchungen erforderlich', 400);
+  }
+
+  if (booking_type === 'course' && !course_id) {
+    throw new AppError('Kurs-ID ist für Kurs-Buchungen erforderlich', 400);
+  }
+
+  let total_price = 0;
+  let tutorInfo = null;
+  let courseInfo = null;
+
+  // Preis berechnen und Verfügbarkeit prüfen
+  if (booking_type === 'tutor') {
+    // Tutor-Informationen abrufen
+    const tutorResult = await query(
+      'SELECT t.*, u.name FROM tutors t JOIN users u ON t.user_id = u.id WHERE t.id = $1',
+      [tutor_id]
+    );
+
+    if (tutorResult.rows.length === 0) {
+      throw new AppError('Tutor nicht gefunden', 404);
+    }
+
+    tutorInfo = tutorResult.rows[0];
+    total_price = (tutorInfo.hourly_rate * duration_minutes) / 60;
+
+    // Verfügbarkeit prüfen
+    const bookingDate = new Date(start_date);
+    const dayOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][bookingDate.getDay()];
+    
+    if (tutorInfo.availability && tutorInfo.availability.weeklySchedule) {
+      const daySchedule = tutorInfo.availability.weeklySchedule[dayOfWeek];
+      
+      if (!daySchedule || !daySchedule.enabled) {
+        throw new AppError('Tutor ist an diesem Tag nicht verfügbar', 400);
+      }
+
+      // Prüfen ob der gewünschte Zeitslot verfügbar ist
+      const timeSlotAvailable = daySchedule.timeSlots?.some(slot => 
+        slot.start === time_slot && slot.available === true
+      );
+
+      if (!timeSlotAvailable) {
+        throw new AppError('Gewünschter Zeitslot ist nicht verfügbar', 400);
+      }
+
+      // Prüfen ob bereits eine Buchung für diesen Zeitraum existiert
+      const conflictingBooking = await query(
+        `SELECT id FROM bookings 
+         WHERE tutor_id = $1 AND start_date = $2 AND time_slot = $3 
+         AND status IN ('pending', 'confirmed')`,
+        [tutor_id, start_date, time_slot]
+      );
+
+      if (conflictingBooking.rows.length > 0) {
+        throw new AppError('Zeitslot ist bereits gebucht', 409);
+      }
+    }
+  }
+
+  // Buchung erstellen
+  const bookingResult = await query(
+    `INSERT INTO bookings (
+      student_id, booking_type, course_id, tutor_id, start_date, time_slot,
+      duration_minutes, total_price, currency, subject, notes, status
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+    RETURNING *`,
+    [
+      student_id, booking_type, course_id, tutor_id, start_date, time_slot,
+      duration_minutes, total_price, 'EUR', subject, notes, 'confirmed'
+    ]
+  );
+
+  const newBooking = bookingResult.rows[0];
+
+  // WICHTIG: Tutor-Verfügbarkeit aktualisieren
+  if (booking_type === 'tutor' && tutorInfo) {
+    const updatedAvailability = { ...tutorInfo.availability };
+    const bookingDate = new Date(start_date);
+    const dayOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][bookingDate.getDay()];
+    
+    if (updatedAvailability.weeklySchedule && updatedAvailability.weeklySchedule[dayOfWeek]) {
+      // Zeitslot als nicht verfügbar markieren
+      updatedAvailability.weeklySchedule[dayOfWeek].timeSlots = 
+        updatedAvailability.weeklySchedule[dayOfWeek].timeSlots.map(slot => 
+          slot.start === time_slot 
+            ? { ...slot, available: false }
+            : slot
+        );
+
+      // Verfügbarkeit in der Datenbank aktualisieren
+      await query(
+        'UPDATE tutors SET availability = $1 WHERE id = $2',
+        [JSON.stringify(updatedAvailability), tutor_id]
+      );
+    }
+  }
+
+  // Kurs-Teilnehmerzahl erhöhen (falls Kurs-Buchung)
+  if (booking_type === 'course') {
+    await query(
+      'UPDATE courses SET enrolled_students = enrolled_students + 1 WHERE id = $1',
+      [course_id]
+    );
+  }
+
+  res.status(201).json({
+    message: 'Buchung erfolgreich erstellt',
+    booking: newBooking
+  });
 }));
 
 // Buchungsstatus aktualisieren
@@ -331,6 +497,36 @@ router.delete('/:id', asyncHandler(async (req, res) => {
     'UPDATE bookings SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
     ['cancelled', bookingId]
   );
+
+  // Bei Tutor-Buchungen: Verfügbarkeit wiederherstellen
+  if (booking.booking_type === 'tutor' && booking.tutor_id) {
+    const tutorResult = await query(
+      'SELECT availability FROM tutors WHERE id = $1',
+      [booking.tutor_id]
+    );
+
+    if (tutorResult.rows.length > 0 && tutorResult.rows[0].availability) {
+      const updatedAvailability = { ...tutorResult.rows[0].availability };
+      const bookingDate = new Date(booking.start_date);
+      const dayOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][bookingDate.getDay()];
+      
+      if (updatedAvailability.weeklySchedule && updatedAvailability.weeklySchedule[dayOfWeek]) {
+        // Zeitslot wieder als verfügbar markieren
+        updatedAvailability.weeklySchedule[dayOfWeek].timeSlots = 
+          updatedAvailability.weeklySchedule[dayOfWeek].timeSlots.map(slot => 
+            slot.start === booking.time_slot 
+              ? { ...slot, available: true }
+              : slot
+          );
+
+        // Verfügbarkeit in der Datenbank aktualisieren
+        await query(
+          'UPDATE tutors SET availability = $1 WHERE id = $2',
+          [JSON.stringify(updatedAvailability), booking.tutor_id]
+        );
+      }
+    }
+  }
 
   // Bei Kurs-Buchungen: Teilnehmerzahl verringern
   if (booking.booking_type === 'course' && booking.course_id) {

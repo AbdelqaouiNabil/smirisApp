@@ -321,7 +321,10 @@ router.get('/:id', optionalAuth, asyncHandler(async (req: Request, res: Response
   );
 
   res.json({
-    tutor,
+    tutor: {
+      ...tutor,
+      availability: tutor.availability || null
+    },
     courses: coursesResult.rows,
     reviews: reviewsResult.rows,
     bookedSlots: availabilityResult.rows
@@ -656,6 +659,71 @@ router.get('/by-user/:userId', asyncHandler(async (req: Request, res: Response) 
   );
   if (result.rows.length === 0) throw new AppError('Tutor nicht gefunden', 404);
   res.json({ tutor: result.rows[0] });
+}));
+
+// Update tutor availability
+router.post('/availability', [
+  authenticateToken,
+  requireTutorOrAdmin,
+  body('availability').isObject().withMessage('Verfügbarkeit muss ein Objekt sein'),
+  body('availability.weeklySchedule').isObject().withMessage('Wochenplan muss ein Objekt sein'),
+  body('availability.exceptions').optional().isArray().withMessage('Ausnahmen müssen ein Array sein')
+], asyncHandler(async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw validationError('Ungültige Eingabedaten');
+  }
+
+  const { availability } = req.body;
+  const userId = req.user!.id;
+
+  // Get tutor ID from user ID
+  const tutorResult = await query(
+    'SELECT id FROM tutors WHERE user_id = $1',
+    [userId]
+  );
+
+  if (tutorResult.rows.length === 0) {
+    throw new AppError('Tutor nicht gefunden', 404);
+  }
+
+  const tutorId = tutorResult.rows[0].id;
+
+  // Update availability
+  await query(
+    `UPDATE tutors 
+     SET availability = $1, updated_at = CURRENT_TIMESTAMP
+     WHERE id = $2`,
+    [availability, tutorId]
+  );
+
+  res.json({
+    message: 'Verfügbarkeit erfolgreich aktualisiert',
+    availability
+  });
+}));
+
+// Get current tutor's availability
+router.get('/me/availability', [
+  authenticateToken,
+  requireTutorOrAdmin
+], asyncHandler(async (req: Request, res: Response) => {
+  const userId = req.user!.id;
+
+  const result = await query(
+    `SELECT availability 
+     FROM tutors 
+     WHERE user_id = $1`,
+    [userId]
+  );
+
+  if (result.rows.length === 0) {
+    throw new AppError('Tutor nicht gefunden', 404);
+  }
+
+  res.json({
+    availability: result.rows[0].availability
+  });
 }));
 
 export default router;

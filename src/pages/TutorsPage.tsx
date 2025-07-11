@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../hooks/use-toast'
 import { Star, MapPin, Clock, Euro, Filter, Search, Users, Award, CheckCircle, Video, Globe, MessageCircle } from 'lucide-react'
 import { ComparisonButton } from '../components/comparison/ComparisonButton'
+import { TutorTimeSelector } from '../components/TutorTimeSelector'
 import { tutorsApi, Tutor, ApiError } from '../lib/api'
 
 // Lokalisierung für deutsche Sprache
@@ -22,13 +23,13 @@ interface Availability {
   blockedSlots: string[]
 }
 
-interface Booking {
+interface BookingData {
   tutorId: number
   date: string
   time: string
   duration: number
   subject: string
-  notes: string
+  notes?: string
 }
 
 export default function TutorsPage() {
@@ -43,7 +44,7 @@ export default function TutorsPage() {
   const [showBookingModal, setShowBookingModal] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [selectedTime, setSelectedTime] = useState('')
-  const [bookingData, setBookingData] = useState<Booking>({
+  const [bookingData, setBookingData] = useState<BookingData>({
     tutorId: 0,
     date: '',
     time: '',
@@ -170,52 +171,65 @@ export default function TutorsPage() {
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!user || !selectedTutor) {
-      toast({
-        title: "Fehler",
-        description: "Sie müssen angemeldet sein, um eine Buchung zu tätigen.",
-        variant: "destructive"
-      })
-      return
-    }
-
     try {
-      // Erstelle neue Buchung mit eindeutiger ID
-      const newBooking = {
-        id: Date.now(), // Eindeutige ID basierend auf Timestamp
-        studentId: user.id,
-        tutorId: selectedTutor.id,
-        type: 'tutor' as const,
-        date: bookingData.date,
-        time: bookingData.time,
-        duration: bookingData.duration,
-        status: 'confirmed' as const,
-        price: selectedTutor.hourly_rate * (bookingData.duration / 60),
-        subject: bookingData.subject,
-        notes: bookingData.notes || '',
-        createdAt: new Date().toISOString().split('T')[0],
-        isRecurring: false,
-        paymentStatus: 'paid' as const,
-        meetingLink: 'https://meet.google.com/xyz-abc-def' // Beispiel-Link
+      // Validate required fields
+      if (!selectedTutor?.id || !bookingData.date || !bookingData.time || !bookingData.subject) {
+        toast({
+          title: "Fehler",
+          description: "Bitte füllen Sie alle erforderlichen Felder aus.",
+          variant: "destructive"
+        })
+        return
       }
 
-      // Lade bestehende Buchungen aus localStorage
-      const existingBookings = JSON.parse(localStorage.getItem('userBookings') || '[]')
-      
-      // Füge neue Buchung hinzu
-      const updatedBookings = [...existingBookings, newBooking]
-      
-      // Speichere in localStorage
-      localStorage.setItem('userBookings', JSON.stringify(updatedBookings))
+      // Format date to YYYY-MM-DD if it's not already in that format
+      const formattedDate = bookingData.date.includes('T') 
+        ? bookingData.date.split('T')[0] 
+        : bookingData.date
 
-      // Zeige Erfolgs-Toast
+      // Format time to ensure HH:MM format
+      const formattedTime = bookingData.time.length === 5 
+        ? bookingData.time 
+        : `${bookingData.time.padStart(2, '0')}:00`
+
+      const bookingPayload = {
+        booking_type: 'tutor',
+        tutor_id: selectedTutor.id,
+        start_date: formattedDate,
+        time_slot: formattedTime,
+        duration_minutes: bookingData.duration,
+        subject: bookingData.subject.trim(),
+        notes: bookingData.notes?.trim() || ''
+      }
+
+      console.log('Sending booking payload:', bookingPayload) // Debug log
+
+      const response = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify(bookingPayload)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('Server error:', errorData) // Debug log
+        throw new Error(errorData.error || 'Fehler beim Erstellen der Buchung')
+      }
+
+      const result = await response.json()
+      console.log('Booking result:', result) // Debug log
+
+      // Show success toast
       toast({
         title: "Buchung erfolgreich!",
-        description: `Ihr Unterricht mit ${selectedTutor.name} am ${bookingData.date} um ${bookingData.time} wurde bestätigt.`,
+        description: `Ihr Unterricht mit ${selectedTutor.name} am ${formattedDate} um ${formattedTime} wurde bestätigt.`,
         variant: "default"
       })
 
-      // Modal schließen und Daten zurücksetzen
+      // Close modal and reset data
       setShowBookingModal(false)
       setSelectedTutor(null)
       setBookingData({
@@ -628,34 +642,39 @@ export default function TutorsPage() {
                       required
                       min={new Date().toISOString().split('T')[0]}
                       value={bookingData.date}
-                      onChange={(e) => setBookingData({...bookingData, date: e.target.value})}
+                      onChange={(e) => {
+                        const newDate = e.target.value
+                        setBookingData({
+                          ...bookingData,
+                          date: newDate,
+                          time: '' // Reset time when date changes
+                        })
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Uhrzeit wählen
-                    </label>
-                    <select
-                      required
-                      value={bookingData.time}
-                      onChange={(e) => setBookingData({...bookingData, time: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Verfügbare Zeit wählen</option>
-                      {bookingData.date && getAvailableSlots(selectedTutor.id, bookingData.date).map(slot => (
-                        <option key={slot} value={slot}>{slot} Uhr</option>
-                      ))}
-                    </select>
-                  </div>
                 </div>
+
+                {/* Enhanced Time Selector */}
+                {bookingData.date && (
+                  <TutorTimeSelector
+                    tutorId={selectedTutor.id}
+                    selectedDate={bookingData.date}
+                    selectedTime={bookingData.time}
+                    onTimeChange={(time) => {
+                      console.log('Selected time:', time) // Debug log
+                      setBookingData({...bookingData, time})
+                    }}
+                    className="col-span-full"
+                  />
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Dauer
                   </label>
                   <select
+                    required
                     value={bookingData.duration}
                     onChange={(e) => setBookingData({...bookingData, duration: parseInt(e.target.value)})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -687,7 +706,7 @@ export default function TutorsPage() {
                   <textarea
                     rows={3}
                     placeholder="Teilen Sie dem Tutor mit, worauf Sie sich konzentrieren möchten..."
-                    value={bookingData.notes}
+                    value={bookingData.notes || ''}
                     onChange={(e) => setBookingData({...bookingData, notes: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   ></textarea>
@@ -695,27 +714,27 @@ export default function TutorsPage() {
 
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <div className="flex justify-between items-center">
-                    <span className="font-medium">Gesamtpreis:</span>
+                    <span className="text-gray-600">Gesamtpreis:</span>
                     <span className="text-2xl font-bold text-blue-700">
                       {Math.round((selectedTutor.hourly_rate * bookingData.duration) / 60)}€
                     </span>
                   </div>
                   <p className="text-sm text-gray-500 mt-1">
-                    {selectedTutor.hourly_rate}€/Stunde × {bookingData.duration} Minuten
+                    Basierend auf {bookingData.duration} Minuten zum Stundensatz von {selectedTutor.hourly_rate}€
                   </p>
                 </div>
 
-                <div className="flex space-x-4 pt-4">
+                <div className="flex justify-end space-x-3">
                   <button
                     type="button"
                     onClick={() => setShowBookingModal(false)}
-                    className="flex-1 border border-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-50 transition-colors"
+                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
                   >
                     Abbrechen
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-md transition-colors"
+                    className="px-4 py-2 bg-blue-700 text-white rounded-md hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                   >
                     Jetzt buchen
                   </button>

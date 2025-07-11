@@ -30,8 +30,8 @@ export default function LoginPage() {
       if (isLogin) {
         success = await login(formData.email, formData.password)
         if (success) {
-          // Get user role from localStorage or context
-          const userData = JSON.parse(localStorage.getItem('auth_user') || '{}');
+          // Get user role from the correct localStorage key
+          const userData = JSON.parse(localStorage.getItem('germansphere_user') || '{}');
           if (userData.role === 'tutor') {
             navigate('/tutor-dashboard')
           } else if (userData.role === 'school') {
@@ -104,7 +104,7 @@ export default function LoginPage() {
       
       if (success) {
         // Check user role and redirect appropriately
-        const userData = JSON.parse(localStorage.getItem('auth_user') || '{}');
+        const userData = JSON.parse(localStorage.getItem('germansphere_user') || '{}');
         if (userData.role === 'tutor') {
           navigate('/tutor-dashboard')
         } else if (userData.role === 'school') {
@@ -136,7 +136,7 @@ export default function LoginPage() {
       
       if (success) {
         // Check user role and redirect appropriately
-        const userData = JSON.parse(localStorage.getItem('auth_user') || '{}');
+        const userData = JSON.parse(localStorage.getItem('germansphere_user') || '{}');
         if (userData.role === 'tutor') {
           navigate('/tutor-dashboard')
         } else if (userData.role === 'school') {
@@ -168,7 +168,7 @@ export default function LoginPage() {
       
       if (success) {
         // Check user role and redirect appropriately
-        const userData = JSON.parse(localStorage.getItem('auth_user') || '{}');
+        const userData = JSON.parse(localStorage.getItem('germansphere_user') || '{}');
         if (userData.role === 'tutor') {
           navigate('/tutor-dashboard')
         } else if (userData.role === 'school') {
