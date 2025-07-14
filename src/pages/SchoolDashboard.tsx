@@ -23,6 +23,7 @@ import {
 import { schoolsApi } from '../lib/api'
 import { coursesApi } from '../lib/api'
 import React from 'react'
+import { API_BASE_URL } from '../lib/api';
 
 interface SchoolStats {
   totalCourses: number
@@ -109,6 +110,8 @@ const SchoolDashboard = () => {
   const [editCourseData, setEditCourseData] = useState<Partial<Course> | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
   const [editFormError, setEditFormError] = useState<string | null>(null)
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [courseReviews, setCourseReviews] = useState<{ [courseId: number]: any[] }>({});
 
   useEffect(() => {
     if (!canManageSchool()) {
@@ -121,6 +124,26 @@ const SchoolDashboard = () => {
     }
     loadSchoolData()
   }, [])
+
+  useEffect(() => {
+    if (courses.length === 0) return;
+    const fetchAllReviews = async () => {
+      const reviewsByCourse: { [courseId: number]: any[] } = {};
+      await Promise.all(
+        courses.map(async (course) => {
+          try {
+            const res = await fetch(`${API_BASE_URL}/reviews/course/${course.id}`);
+            const data = await res.json();
+            reviewsByCourse[course.id] = data.reviews || [];
+          } catch (e) {
+            reviewsByCourse[course.id] = [];
+          }
+        })
+      );
+      setCourseReviews(reviewsByCourse);
+    };
+    fetchAllReviews();
+  }, [courses]);
 
   const loadSchoolData = async () => {
     try {
@@ -137,8 +160,12 @@ const SchoolDashboard = () => {
         website: realSchool.website || '',
         description: realSchool.description || '',
         certifications: realSchool.certifications || [],
-        images: [] // Remove or set to [] since images is not in School type
+        images: []
       })
+      // Fetch reviews for this school
+      const reviewsRes = await fetch(`${API_BASE_URL.replace('/api', '')}/api/schools/${realSchool.id}`);
+      const reviewsData = await reviewsRes.json();
+      setReviews(reviewsData.reviews || []);
       // Optionally, fetch courses for this school
       const coursesResponse = await coursesApi.getAll({ school_id: realSchool.id })
       setCourses((coursesResponse.courses || []).map(course => ({
@@ -171,7 +198,7 @@ const SchoolDashboard = () => {
     }
   }
 
-  const handleAddCourse = () => {
+  const handleAddCourse = async () => {
     if (!newCourse.title || !newCourse.price || !newCourse.startDate) {
       toast({
         title: "Fehlende Daten",
@@ -181,47 +208,64 @@ const SchoolDashboard = () => {
       return
     }
 
-    const course: Course = {
-      id: Date.now(),
-      title: newCourse.title!,
-      level: newCourse.level!,
-      price: newCourse.price!,
-      duration: newCourse.duration!,
-      maxStudents: newCourse.maxStudents!,
-      currentStudents: 0,
-      status: 'active',
-      startDate: newCourse.startDate!,
-      endDate: newCourse.endDate!,
-      schedule: newCourse.schedule!,
-      description: newCourse.description!
+    try {
+      const payload = {
+        school_id: schoolInfo.id, // Ensure this is set!
+        title: newCourse.title,
+        level: newCourse.level as 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2',
+        price: newCourse.price,
+        duration_weeks: parseInt(newCourse.duration) || 1,
+        max_students: newCourse.maxStudents,
+        schedule: newCourse.schedule,
+        description: newCourse.description,
+        start_date: newCourse.startDate,
+        end_date: newCourse.endDate,
+        category: "general" as 'general' | 'business' | 'exam_prep' | 'conversation', // or let user pick
+        is_online: true // or let user pick
+      };
+      await coursesApi.create(payload);
+      toast({
+        title: "Kurs hinzugefügt",
+        description: `${newCourse.title} wurde erfolgreich erstellt`,
+      });
+      setShowAddCourseModal(false);
+      setNewCourse({
+        title: '',
+        level: 'A1',
+        price: 0,
+        duration: '',
+        maxStudents: 20,
+        schedule: '',
+        description: '',
+        startDate: '',
+        endDate: ''
+      });
+      loadSchoolData(); // reload courses from backend
+    } catch (error: any) {
+      toast({
+        title: "Fehler beim Erstellen des Kurses",
+        description: error.message,
+        variant: "destructive"
+      });
     }
-
-    setCourses([...courses, course])
-    setShowAddCourseModal(false)
-    setNewCourse({
-      title: '',
-      level: 'A1',
-      price: 0,
-      duration: '',
-      maxStudents: 20,
-      schedule: '',
-      description: '',
-      startDate: '',
-      endDate: ''
-    })
-
-    toast({
-      title: "Kurs hinzugefügt",
-      description: `${course.title} wurde erfolgreich erstellt`,
-    })
   }
 
-  const handleDeleteCourse = (courseId: number) => {
-    setCourses(courses.filter(course => course.id !== courseId))
-    toast({
-      title: "Kurs gelöscht",
-      description: "Der Kurs wurde erfolgreich entfernt",
-    })
+  const handleDeleteCourse = async (courseId: number) => {
+    if (!window.confirm('Möchten Sie diesen Kurs wirklich löschen?')) return;
+    try {
+      await coursesApi.delete(courseId);
+      toast({
+        title: "Kurs gelöscht",
+        description: "Der Kurs wurde erfolgreich entfernt",
+      });
+      loadSchoolData(); // reload courses from backend
+    } catch (error: any) {
+      toast({
+        title: "Fehler beim Löschen des Kurses",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   }
 
   const handleSaveSchoolInfo = () => {
@@ -327,26 +371,19 @@ const SchoolDashboard = () => {
       <div className="bg-white rounded-lg shadow p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Letzte Aktivitäten</h3>
         <div className="space-y-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <p className="text-gray-700">Neue Anmeldung für Business Deutsch B2</p>
-            <span className="text-gray-500 text-sm">vor 1 Stunde</span>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-            <p className="text-gray-700">Kurs "Deutsch A1 Intensivkurs" ist zu 80% ausgebucht</p>
-            <span className="text-gray-500 text-sm">vor 3 Stunden</span>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-            <p className="text-gray-700">Neue 5-Sterne Bewertung erhalten</p>
-            <span className="text-gray-500 text-sm">vor 5 Stunden</span>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-            <p className="text-gray-700">Monatlicher Umsatzbericht verfügbar</p>
-            <span className="text-gray-500 text-sm">vor 1 Tag</span>
-          </div>
+          {reviews.length === 0 ? (
+            <div className="text-gray-500 text-sm">Noch keine Bewertungen vorhanden.</div>
+          ) : (
+            reviews.map((review, idx) => (
+              <div key={idx} className="flex items-center space-x-3">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <p className="text-gray-700">
+                  {review.reviewer_name || review.studentName} hat Ihren Kurs bewertet: {review.comment} ({review.rating} Sterne)
+                </p>
+                <span className="text-gray-500 text-sm">{new Date(review.created_at || review.date).toLocaleDateString()}</span>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
@@ -411,6 +448,23 @@ const SchoolDashboard = () => {
             </div>
 
             <p className="text-gray-600 text-sm mb-4">{course.description}</p>
+
+            {/* Course Reviews */}
+            {(courseReviews[course.id] && courseReviews[course.id].length > 0) ? (
+              <div className="mt-4 bg-gray-50 rounded p-3">
+                <h4 className="font-semibold text-sm mb-2">Bewertungen:</h4>
+                {courseReviews[course.id].map((review, idx) => (
+                  <div key={idx} className="border-b border-gray-200 py-2 text-sm">
+                    <span className="font-medium">{review.reviewer_name}</span>:
+                    <span className="ml-2">{review.comment}</span>
+                    <span className="ml-2 text-yellow-500">{'★'.repeat(review.rating)}</span>
+                    <span className="ml-2 text-gray-400">{new Date(review.created_at).toLocaleDateString()}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-4 text-xs text-gray-400">Noch keine Bewertungen für diesen Kurs.</div>
+            )}
 
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">

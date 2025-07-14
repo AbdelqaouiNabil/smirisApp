@@ -1,5 +1,6 @@
 // API Configuration and Service Layer
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+
 
 // Types for API responses
 export interface ApiResponse<T> {
@@ -112,6 +113,55 @@ export interface Booking {
   currency: string
   notes?: string
   created_at: string
+}
+
+export interface CourseBooking {
+  id: number
+  uuid: string
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
+  start_date: string
+  end_date?: string
+  time_slot?: string
+  duration_minutes?: number
+  total_price: number
+  currency: string
+  payment_status: 'pending' | 'paid' | 'failed' | 'refunded'
+  notes?: string
+  meeting_link?: string
+  is_recurring: boolean
+  recurring_pattern?: string
+  created_at: string
+  updated_at: string
+  // Course information
+  course_id: number
+  course_title: string
+  course_level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2'
+  course_description?: string
+  course_price: number
+  duration_weeks?: number
+  hours_per_week?: number
+  max_students?: number
+  enrolled_students: number
+  course_start_date: string
+  course_end_date?: string
+  schedule?: string
+  is_online: boolean
+  course_image?: string
+  // School information
+  school_id: number
+  school_name: string
+  school_location: string
+  school_address?: string
+  school_phone?: string
+  school_email?: string
+  school_rating: number
+  school_image?: string
+  // Tutor information (if available)
+  tutor_id?: number
+  tutor_name?: string
+  tutor_email?: string
+  tutor_rate?: number
+  tutor_bio?: string
 }
 
 export interface AuthTokens {
@@ -249,6 +299,13 @@ class ApiClient {
     })
   }
 
+  async patch<T>(endpoint: string, data?: any): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : undefined
+    });
+  }
+
   async delete<T>(endpoint: string): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'DELETE'
@@ -333,7 +390,10 @@ export const coursesApi = {
     apiClient.delete(`/courses/${id}`),
   
   createTutorCourse: (data: any) =>
-    apiClient.post<{ course: Course }>('/courses/tutor', data)
+    apiClient.post<{ course: Course }>('/courses/tutor', data),
+  
+  deleteTutorCourse: (id: number) =>
+    apiClient.delete<{ message: string }>(`/courses/tutor/${id}`)
 }
 
 export const tutorsApi = {
@@ -391,8 +451,29 @@ export const bookingsApi = {
   update: (id: number, data: Partial<Booking>) =>
     apiClient.put<{ booking: Booking }>(`/bookings/${id}`, data),
   
+  updateStatus: async (id: number, status: string) => {
+    const url = `${API_BASE_URL}/bookings/${id}/status`;
+    const token = localStorage.getItem('auth_token');
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({ status })
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new ApiError(errorData.error || errorData.message || 'Status update failed', response.status);
+    }
+    return response.json();
+  },
+  
   cancel: (id: number) =>
-    apiClient.delete(`/bookings/${id}`)
+    apiClient.delete(`/bookings/${id}`),
+  
+  getStudentCourses: (params?: { page?: number; limit?: number; status?: string }) =>
+    apiClient.get<{ courseBookings: CourseBooking[]; pagination: any }>('/bookings/student/courses', params)
 }
 
 export const paymentsApi = {

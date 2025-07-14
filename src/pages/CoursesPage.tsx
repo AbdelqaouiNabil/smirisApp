@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Filter, Search, MapPin, Clock, Euro, Users, Star } from 'lucide-react'
 import { ComparisonButton } from '../components/comparison/ComparisonButton'
 import { coursesApi, schoolsApi, Course, School, ApiError } from '../lib/api'
+import { toast } from '../hooks/use-toast'
 
 export default function CoursesPage() {
   const navigate = useNavigate()
@@ -17,6 +18,13 @@ export default function CoursesPage() {
     startDate: ''
   })
   const [showFilters, setShowFilters] = useState(false)
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [bookingData, setBookingData] = useState({
+    date: '',
+    participants: 1,
+    notes: ''
+  });
 
   useEffect(() => {
     // Load courses and schools data from API
@@ -96,6 +104,41 @@ export default function CoursesPage() {
     
     navigate(`/courses/${courseId}`)
   }
+
+  const openBookingModal = (course: Course) => {
+    setSelectedCourse(course);
+    setShowBookingModal(true);
+    setBookingData({ date: '', participants: 1, notes: '' });
+  };
+
+  const handleBookingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCourse || !bookingData.date) {
+      toast({ title: 'Bitte wählen Sie ein Datum.', variant: 'destructive' });
+      return;
+    }
+    try {
+      const payload = {
+        booking_type: 'course',
+        course_id: selectedCourse.id,
+        start_date: bookingData.date,
+        participants: bookingData.participants,
+        notes: bookingData.notes
+      };
+      await fetch('/api/bookings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(localStorage.getItem('auth_token') ? { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` } : {})
+        },
+        body: JSON.stringify(payload)
+      });
+      setShowBookingModal(false);
+      toast({ title: 'Buchung erfolgreich!', description: 'Ihre Buchung wurde gespeichert.', variant: 'default' });
+    } catch (error: any) {
+      toast({ title: 'Fehler bei der Buchung', description: error.message, variant: 'destructive' });
+    }
+  };
 
   const cities = [...new Set((courses || []).map(course => course.school_location).filter(Boolean))]
   const levels = [...new Set((courses || []).map(course => course.level).filter(Boolean))]
@@ -285,6 +328,12 @@ export default function CoursesPage() {
                           >
                             Details ansehen
                           </button>
+                          <button
+                            onClick={() => openBookingModal(course)}
+                            className="flex-1 bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md transition-colors"
+                          >
+                            Jetzt buchen
+                          </button>
                           <ComparisonButton
                             item={{
                               id: course.id,
@@ -324,6 +373,64 @@ export default function CoursesPage() {
           </div>
         </div>
       </div>
+
+      {/* Booking Modal */}
+      {showBookingModal && selectedCourse && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded shadow-lg w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Kurs buchen: {selectedCourse.title}</h2>
+            <form onSubmit={handleBookingSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Datum wählen *</label>
+                <input
+                  type="date"
+                  required
+                  min={new Date().toISOString().split('T')[0]}
+                  value={bookingData.date}
+                  onChange={e => setBookingData({ ...bookingData, date: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Teilnehmer</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={selectedCourse.max_students || 20}
+                  value={bookingData.participants}
+                  onChange={e => setBookingData({ ...bookingData, participants: parseInt(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Notizen</label>
+                <textarea
+                  value={bookingData.notes}
+                  onChange={e => setBookingData({ ...bookingData, notes: e.target.value })}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="Besondere Wünsche oder Anforderungen..."
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setShowBookingModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Abbrechen
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  Buchung abschließen
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

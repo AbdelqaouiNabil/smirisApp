@@ -9,7 +9,7 @@ import {
   Plus, Edit, Trash2, CheckCircle, AlertCircle, Eye, CalendarClock
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { tutorsApi, coursesApi } from '../lib/api'
+import { tutorsApi, coursesApi, bookingsApi } from '../lib/api'
 import React from 'react'
 import { TutorAvailability } from '../components/TutorAvailability'
 
@@ -60,6 +60,15 @@ interface CourseOffering {
   isActive: boolean
 }
 
+// Add review type
+interface Review {
+  rating: number;
+  title?: string;
+  comment: string;
+  created_at: string;
+  reviewer_name: string;
+}
+
 export default function TutorDashboard() {
   const { toast } = useToast()
   const { user } = useAuth()
@@ -98,6 +107,8 @@ export default function TutorDashboard() {
   // Add validation state
   const [formError, setFormError] = useState<string | null>(null);
 
+  const [reviews, setReviews] = useState<Review[]>([]);
+
   const handleCourseInput = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     setNewCourse(prev => ({
@@ -109,9 +120,41 @@ export default function TutorDashboard() {
   const handleCreateCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
-    // Simple validation
-    if (!newCourse.title.trim() || !newCourse.level || !newCourse.category || !newCourse.price || !newCourse.max_students) {
-      setFormError('Please fill in all required fields.');
+    // Robust validation for all required fields and types
+    if (!newCourse.title.trim()) {
+      setFormError('Bitte geben Sie einen Kurstitel ein.');
+      return;
+    }
+    if (!['A1','A2','B1','B2','C1','C2'].includes(newCourse.level)) {
+      setFormError('Bitte wählen Sie ein gültiges Sprachniveau.');
+      return;
+    }
+    if (!['general','business','exam_prep','conversation'].includes(newCourse.category)) {
+      setFormError('Bitte wählen Sie eine gültige Kategorie.');
+      return;
+    }
+    if (typeof newCourse.price !== 'number' || isNaN(newCourse.price) || newCourse.price < 0) {
+      setFormError('Bitte geben Sie einen gültigen Preis ein.');
+      return;
+    }
+    if (newCourse.duration_weeks && (typeof newCourse.duration_weeks !== 'number' || newCourse.duration_weeks < 1 || newCourse.duration_weeks > 52)) {
+      setFormError('Die Kursdauer muss zwischen 1 und 52 Wochen liegen.');
+      return;
+    }
+    if (newCourse.hours_per_week && (typeof newCourse.hours_per_week !== 'number' || newCourse.hours_per_week < 1 || newCourse.hours_per_week > 40)) {
+      setFormError('Die Stunden pro Woche müssen zwischen 1 und 40 liegen.');
+      return;
+    }
+    if (newCourse.max_students && (typeof newCourse.max_students !== 'number' || newCourse.max_students < 1 || newCourse.max_students > 100)) {
+      setFormError('Die maximale Teilnehmerzahl muss zwischen 1 und 100 liegen.');
+      return;
+    }
+    if (newCourse.start_date && isNaN(Date.parse(newCourse.start_date))) {
+      setFormError('Bitte geben Sie ein gültiges Startdatum ein.');
+      return;
+    }
+    if (newCourse.end_date && isNaN(Date.parse(newCourse.end_date))) {
+      setFormError('Bitte geben Sie ein gültiges Enddatum ein.');
       return;
     }
     setIsSubmitting(true);
@@ -144,6 +187,25 @@ export default function TutorDashboard() {
       // Fetch real tutor data from backend
       const response = await tutorsApi.getByUserId(user.id)
       const tutor = response.tutor
+      // Fetch reviews for this tutor
+      const tutorDetails = await tutorsApi.getById(tutor.id);
+      setReviews(tutorDetails.reviews || []);
+      // Fetch bookings for this tutor
+      const bookingsRes = await bookingsApi.getAll();
+      const bookingsData = (bookingsRes.bookings || []).map((b: any) => ({
+        id: b.id,
+        studentName: b.student_name || '',
+        studentEmail: b.student_email || '',
+        date: b.start_date ? new Date(b.start_date).toLocaleDateString() : '',
+        time: b.time_slot || '',
+        duration: b.duration_minutes || 60,
+        subject: b.subject || '',
+        type: (b.booking_type === 'tutor' ? '1-zu-1' : 'Kleingruppe') as '1-zu-1' | 'Kleingruppe',
+        status: b.status,
+        price: b.total_price || 0,
+        notes: b.notes || ''
+      })) as Booking[];
+      setBookings(bookingsData);
       // You may need to adjust the mapping below based on your backend response structure
       setStats({
         totalEarnings: 0,
@@ -168,7 +230,6 @@ export default function TutorDashboard() {
           isActive: true // or course.is_active if available
         }))
       );
-      setBookings([]);
       setCalendarEvents([]);
     } catch (error) {
       toast({
@@ -286,6 +347,30 @@ export default function TutorDashboard() {
         </div>
       </div>
 
+      {/* Reviews Section */}
+      <div className="bg-white rounded-xl shadow-md p-6">
+        <h3 className="text-xl font-bold text-gray-900 mb-6">Letzte Bewertungen</h3>
+        {reviews.length === 0 ? (
+          <div className="text-gray-500">Noch keine Bewertungen vorhanden.</div>
+        ) : (
+          <div className="space-y-4">
+            {reviews.map((review, idx) => (
+              <div key={idx} className="border-b pb-4 mb-4 last:border-b-0 last:pb-0 last:mb-0">
+                <div className="flex items-center mb-2">
+                  {[1,2,3,4,5].map(star => (
+                    <Star key={star} className={`w-4 h-4 ${review.rating >= star ? 'text-yellow-400' : 'text-gray-300'}`} />
+                  ))}
+                  <span className="ml-2 text-sm text-gray-600">{review.reviewer_name}</span>
+                  <span className="ml-2 text-xs text-gray-400">{new Date(review.created_at).toLocaleDateString()}</span>
+                </div>
+                {review.title && <div className="font-semibold text-gray-900 mb-1">{review.title}</div>}
+                <div className="text-gray-700">{review.comment}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
     </div>
   )
 
@@ -394,7 +479,19 @@ export default function TutorDashboard() {
                 >
                   <Edit size={16} />
                 </button>
-                <button className="text-red-600 hover:text-red-900">
+                <button
+                  className="text-red-600 hover:text-red-900"
+                  onClick={async () => {
+                    if (!window.confirm('Möchten Sie diesen Kurs wirklich löschen?')) return;
+                    try {
+                      await coursesApi.deleteTutorCourse(course.id);
+                      toast({ title: 'Kurs gelöscht', variant: 'default' });
+                      loadData();
+                    } catch (error: any) {
+                      toast({ title: 'Fehler beim Löschen des Kurses', description: error.message, variant: 'destructive' });
+                    }
+                  }}
+                >
                   <Trash2 size={16} />
                 </button>
               </div>

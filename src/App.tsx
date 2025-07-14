@@ -14,6 +14,7 @@ import VisaServicesPage from './pages/VisaServicesPage'
 import ComparisonPage from './pages/ComparisonPage'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
+import StudentTutorDashboard from './pages/StudentTutorDashboard'
 import StudentRegistrationPage from './pages/StudentRegistrationPage'
 import AdminPanel from './pages/AdminPanel'
 import SchoolDashboard from './pages/SchoolDashboard'
@@ -47,6 +48,7 @@ function App() {
                 <Route path="/visa" element={<VisaServicesPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/student-tutor-dashboard" element={<StudentTutorDashboard />} />
                 
                 {/* Rollenbasierte Routen */}
                 <Route path="/student-registration" element={<StudentRegistrationPage />} />

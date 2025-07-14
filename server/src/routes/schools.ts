@@ -339,6 +339,72 @@ router.delete('/:id', [
   });
 }));
 
+// Schule aktivieren/deaktivieren (Admin/Schule)
+router.patch('/:id/status', [
+  authenticateToken,
+  requireSchoolOrAdmin,
+  body('is_active')
+    .isBoolean()
+    .withMessage('Status muss ein Boolean sein'),
+  body('reason')
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Grund zu lang')
+], asyncHandler(async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw validationError('Eingabedaten sind ungültig');
+  }
+
+  const schoolId = parseInt(req.params.id);
+  if (isNaN(schoolId)) {
+    throw validationError('Ungültige Schul-ID');
+  }
+
+  const { is_active, reason } = req.body;
+
+  // Berechtigung prüfen (Schule kann nur ihre eigenen Daten bearbeiten)
+  const schoolResult = await query(
+    'SELECT id, owner_id FROM schools WHERE id = $1',
+    [schoolId]
+  );
+
+  if (schoolResult.rows.length === 0) {
+    throw new AppError('Schule nicht gefunden', 404);
+  }
+
+  const school = schoolResult.rows[0];
+  if (req.user!.role !== 'admin' && school.owner_id !== req.user!.id) {
+    throw new AppError('Keine Berechtigung diese Schule zu bearbeiten', 403);
+  }
+
+  // Status aktualisieren
+  await query(
+    'UPDATE schools SET is_active = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+    [is_active, schoolId]
+  );
+
+  // Bei Deaktivierung auch zugehörige Kurse deaktivieren
+  if (!is_active) {
+    await query(
+      'UPDATE courses SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE school_id = $1',
+      [schoolId]
+    );
+  }
+
+  // Aktualisierte Schule abrufen
+  const updatedResult = await query(
+    'SELECT * FROM schools WHERE id = $1',
+    [schoolId]
+  );
+
+  res.json({
+    message: `Schule ${is_active ? 'aktiviert' : 'deaktiviert'}`,
+    school: updatedResult.rows[0]
+  });
+}));
+
 // Bewertung für Schule hinzufügen
 router.post('/:id/reviews', [
   authenticateToken,

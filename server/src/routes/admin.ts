@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { body, query as expressQuery, validationResult } from 'express-validator';
 import { query } from '../database/connection';
 import { requireAdmin } from '../middleware/auth';
@@ -7,7 +7,7 @@ import { asyncHandler, AppError, validationError } from '../middleware/errorHand
 const router = express.Router();
 
 // Dashboard-Übersicht
-router.get('/dashboard', asyncHandler(async (req, res) => {
+router.get('/dashboard', asyncHandler(async (req: Request, res: Response) => {
   // Grundlegende Statistiken
   const overviewStats = await query(
     `SELECT 
@@ -84,7 +84,7 @@ router.get('/users', [
   expressQuery('role').optional().isIn(['student', 'tutor', 'school', 'admin']).withMessage('Ungültige Rolle'),
   expressQuery('status').optional().isIn(['active', 'inactive']).withMessage('Ungültiger Status'),
   expressQuery('search').optional().trim().isLength({ max: 100 })
-], asyncHandler(async (req, res) => {
+], asyncHandler(async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     throw validationError('Ungültige Abfrageparameter');
@@ -162,7 +162,7 @@ router.patch('/users/:id/status', [
     .trim()
     .isLength({ max: 500 })
     .withMessage('Grund zu lang')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     throw validationError('Eingabedaten sind ungültig');
@@ -228,11 +228,36 @@ router.patch('/users/:id/status', [
   });
 }));
 
+// Benutzer hart löschen (nur Admin)
+router.delete('/users/:id', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+  const userId = parseInt(req.params.id);
+  if (isNaN(userId)) {
+    throw validationError('Ungültige Benutzer-ID');
+  }
+
+  // Prüfen, ob Benutzer existiert
+  const userResult = await query('SELECT id FROM users WHERE id = $1', [userId]);
+  if (userResult.rows.length === 0) {
+    throw new AppError('Benutzer nicht gefunden', 404);
+  }
+
+  // Optionale Bereinigung: Buchungen, Bewertungen, etc. löschen
+  await query('DELETE FROM bookings WHERE student_id = $1 OR tutor_id = $1', [userId]);
+  await query('DELETE FROM reviews WHERE user_id = $1', [userId]);
+  await query('DELETE FROM tutors WHERE user_id = $1', [userId]);
+  await query('DELETE FROM schools WHERE owner_id = $1', [userId]);
+
+  // Benutzer löschen
+  await query('DELETE FROM users WHERE id = $1', [userId]);
+
+  res.json({ message: 'Benutzer erfolgreich gelöscht', userId });
+}));
+
 // Content-Moderation
 router.get('/content/reviews', [
   expressQuery('status').optional().isIn(['pending', 'approved', 'rejected']).withMessage('Ungültiger Status'),
   expressQuery('page').optional().isInt({ min: 1 }).withMessage('Ungültige Seitenzahl')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async (req: Request, res: Response) => {
   const page = parseInt(req.query.page as string) || 1;
   const limit = 20;
   const offset = (page - 1) * limit;
@@ -287,7 +312,7 @@ router.patch('/content/reviews/:id', [
     .trim()
     .isLength({ max: 500 })
     .withMessage('Grund zu lang')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     throw validationError('Eingabedaten sind ungültig');
@@ -316,7 +341,7 @@ router.patch('/content/reviews/:id', [
 }));
 
 // Plattform-Statistiken
-router.get('/analytics/overview', asyncHandler(async (req, res) => {
+router.get('/analytics/overview', asyncHandler(async (req: Request, res: Response) => {
   // Umsatz-Trends (letzte 12 Monate)
   const revenueStats = await query(
     `SELECT 
@@ -382,7 +407,7 @@ router.get('/analytics/overview', asyncHandler(async (req, res) => {
 }));
 
 // Systemkonfiguration
-router.get('/config', asyncHandler(async (req, res) => {
+router.get('/config', asyncHandler(async (req: Request, res: Response) => {
   // Hier würde normalerweise eine Konfigurationstabelle gelesen
   const config = {
     platform: {
@@ -420,7 +445,7 @@ router.put('/config', [
   body('settings')
     .isObject()
     .withMessage('Einstellungen müssen ein Objekt sein')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     throw validationError('Eingabedaten sind ungültig');
@@ -437,7 +462,7 @@ router.put('/config', [
 }));
 
 // System-Backup erstellen
-router.post('/backup', asyncHandler(async (req, res) => {
+router.post('/backup', asyncHandler(async (req: Request, res: Response) => {
   // In einer echten Anwendung würde hier ein vollständiges Datenbank-Backup erstellt
   const backupId = `backup_${Date.now()}`;
   
@@ -466,7 +491,7 @@ router.post('/notifications', [
     .optional()
     .isArray()
     .withMessage('Zielbenutzer müssen ein Array sein')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     throw validationError('Eingabedaten sind ungültig');

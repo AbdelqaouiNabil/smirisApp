@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { PaymentIntegration } from '../components/payment/PaymentIntegration'
 import { Calendar, Clock, MapPin, Users, Star, CheckCircle, AlertCircle } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { coursesApi, bookingsApi, Course, ApiError } from '../lib/api'
+import { useToast } from '../hooks/use-toast'
 
 interface BookingItem {
   id: string
@@ -38,8 +40,10 @@ export default function BookingPage() {
   const { id, type } = useParams<{ id: string; type: string }>()
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
+  const { toast } = useToast()
   
   const [bookingItem, setBookingItem] = useState<BookingItem | null>(null)
+  const [course, setCourse] = useState<Course | null>(null)
   const [showPayment, setShowPayment] = useState(false)
   const [bookingData, setBookingData] = useState<BookingFormData>({
     studentName: user?.name || '',
@@ -52,6 +56,8 @@ export default function BookingPage() {
   })
   const [isLoading, setIsLoading] = useState(true)
   const [paymentResult, setPaymentResult] = useState<any>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [tempBookingId, setTempBookingId] = useState<number | null>(null)
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -64,28 +70,61 @@ export default function BookingPage() {
   const loadBookingItem = async () => {
     setIsLoading(true)
     try {
-      // Simulate loading booking item data
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Mock data based on type and id
-      const mockData: BookingItem = {
-        id: id || '1',
-        type: type as 'course' | 'tutor' | 'visa',
-        title: getTitle(type, id),
-        description: getDescription(type),
-        price: getPrice(type),
-        currency: 'MAD',
-        duration: getDuration(type),
-        location: 'Casablanca, Marokko',
-        rating: 4.8,
-        provider: getProvider(type),
-        image: getImage(type),
-        features: getFeatures(type)
+      if (type === 'course' && id) {
+        // Load real course data from API
+        const courseResponse = await coursesApi.getById(parseInt(id))
+        const courseData = courseResponse.course
+        
+        setCourse(courseData)
+        
+        // Create booking item from course data
+        const bookingItemData: BookingItem = {
+          id: courseData.id.toString(),
+          type: 'course',
+          title: courseData.title,
+          description: courseData.description || '',
+          price: courseData.price,
+          currency: courseData.currency,
+          duration: courseData.duration_weeks ? `${courseData.duration_weeks} Wochen` : 'N/A',
+          location: courseData.school_location || 'N/A',
+          rating: courseData.school_rating,
+          provider: courseData.school_name,
+          image: courseData.image_url || '/images/course-default.jpg',
+          features: [
+            `Sprachniveau: ${courseData.level}`,
+            `Kategorie: ${courseData.category}`,
+            courseData.is_online ? 'Online verfügbar' : 'Vor Ort',
+            courseData.schedule ? `Zeitplan: ${courseData.schedule}` : 'Flexible Termine'
+          ]
+        }
+        
+        setBookingItem(bookingItemData)
+      } else {
+        // For other types (tutor, visa), use mock data for now
+        const mockData: BookingItem = {
+          id: id || '1',
+          type: type as 'course' | 'tutor' | 'visa',
+          title: getTitle(type, id),
+          description: getDescription(type),
+          price: getPrice(type),
+          currency: 'MAD',
+          duration: getDuration(type),
+          location: 'Casablanca, Marokko',
+          rating: 4.8,
+          provider: getProvider(type),
+          image: getImage(type),
+          features: getFeatures(type)
+        }
+        
+        setBookingItem(mockData)
       }
-      
-      setBookingItem(mockData)
     } catch (error) {
       console.error('Error loading booking item:', error)
+      toast({
+        title: "Fehler",
+        description: "Fehler beim Laden der Buchungsdetails.",
+        variant: "destructive"
+      })
     } finally {
       setIsLoading(false)
     }
@@ -189,24 +228,100 @@ export default function BookingPage() {
     })
   }
 
-  const handleBooking = () => {
+  const handleBooking = async () => {
     // Validate form
     if (!bookingData.studentName || !bookingData.email || !bookingData.startDate) {
-      alert('Bitte füllen Sie alle Pflichtfelder aus.')
+      toast({
+        title: "Fehler",
+        description: "Bitte füllen Sie alle Pflichtfelder aus.",
+        variant: "destructive"
+      })
       return
     }
     
-    setShowPayment(true)
+    if (type === 'course' && course) {
+      setIsSubmitting(true)
+      try {
+        // Create booking directly (skip payment)
+        const bookingPayload = {
+          booking_type: 'course',
+          course_id: course.id,
+          start_date: bookingData.startDate,
+          time_slot: bookingData.timeSlot ? bookingData.timeSlot.split('-')[0].trim() : '09:00',
+          duration_minutes: 60, // Default duration for courses
+          subject: `Kurs: ${course.title}`,
+          notes: bookingData.notes || ''
+        }
+
+        console.log('Creating booking (no payment):', bookingPayload)
+        const bookingResponse = await bookingsApi.create(bookingPayload)
+        setTempBookingId(bookingResponse.booking.id)
+        setPaymentResult({
+          paymentId: bookingResponse.booking.id,
+          transactionId: 'N/A',
+          status: 'Erfolgreich (ohne Zahlung)'
+        })
+      } catch (error) {
+        console.error('Error creating booking:', error)
+        toast({
+          title: "Buchungsfehler",
+          description: error instanceof ApiError ? error.message : "Fehler beim Erstellen der Buchung.",
+          variant: "destructive"
+        })
+      } finally {
+        setIsSubmitting(false)
+      }
+    } else {
+      // For other types, just show success (or handle as needed)
+      setPaymentResult({
+        paymentId: 'N/A',
+        transactionId: 'N/A',
+        status: 'Erfolgreich (ohne Zahlung)'
+      })
+    }
   }
 
-  const handlePaymentSuccess = (payment: any) => {
-    setPaymentResult(payment)
-    // Here you would normally save the booking to the database
-    console.log('Booking successful:', { bookingData, payment })
+  const handlePaymentSuccess = async (payment: any) => {
+    setIsSubmitting(true)
+    try {
+      if (type === 'course' && course && tempBookingId) {
+        // Update the existing booking with payment information
+        console.log('Payment successful for booking:', tempBookingId)
+        
+        toast({
+          title: "Buchung erfolgreich!",
+          description: "Ihre Kursbuchung wurde erfolgreich erstellt und bezahlt.",
+          variant: "default"
+        })
+        
+        setPaymentResult({
+          ...payment,
+          bookingId: tempBookingId
+        })
+      } else {
+        // For other types, just log for now
+        console.log('Booking successful:', { bookingData, payment })
+        setPaymentResult(payment)
+      }
+    } catch (error) {
+      console.error('Error processing payment success:', error)
+      toast({
+        title: "Buchungsfehler",
+        description: error instanceof ApiError ? error.message : "Fehler beim Verarbeiten der Zahlung.",
+        variant: "destructive"
+      })
+      setShowPayment(false)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handlePaymentError = (error: string) => {
-    alert(`Zahlungsfehler: ${error}`)
+    toast({
+      title: "Zahlungsfehler",
+      description: error,
+      variant: "destructive"
+    })
     setShowPayment(false)
   }
 
@@ -281,29 +396,8 @@ export default function BookingPage() {
   }
 
   if (showPayment) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-4xl mx-auto px-4">
-          <h1 className="text-3xl font-bold text-gray-900 mb-8">Zahlung abschließen</h1>
-          
-          <PaymentIntegration
-            amount={calculateTotal()}
-            currency={bookingItem.currency}
-            onPaymentSuccess={handlePaymentSuccess}
-            onPaymentError={handlePaymentError}
-          />
-          
-          <div className="mt-6 text-center">
-            <Button
-              variant="outline"
-              onClick={() => setShowPayment(false)}
-            >
-              Zurück zur Buchung
-            </Button>
-          </div>
-        </div>
-      </div>
-    )
+    // Payment form is now deactivated/skipped
+    return null;
   }
 
   return (
@@ -491,8 +585,13 @@ export default function BookingPage() {
                 )}
               </div>
 
-              <Button onClick={handleBooking} className="w-full" size="lg">
-                Zur Zahlung - {calculateTotal()} {bookingItem.currency}
+              <Button 
+                onClick={handleBooking} 
+                disabled={isSubmitting}
+                className="w-full" 
+                size="lg"
+              >
+                {isSubmitting ? 'Wird verarbeitet...' : `Zur Zahlung - ${calculateTotal()} ${bookingItem.currency}`}
               </Button>
 
               <p className="text-xs text-gray-500 text-center">

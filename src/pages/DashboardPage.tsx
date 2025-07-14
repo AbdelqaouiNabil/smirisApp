@@ -4,8 +4,8 @@ import { Calendar as BigCalendar, momentLocalizer } from 'react-big-calendar'
 import moment from 'moment'
 import 'moment/locale/de'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { BookOpen, Users, FileText, Calendar, TrendingUp, Award, Clock, Euro, Settings, Bell, Star, CheckCircle, XCircle, Play } from 'lucide-react'
-import { bookingsApi, Tutor, tutorsApi } from '../lib/api'
+import { BookOpen, Users, FileText, Calendar, TrendingUp, Award, Clock, Euro, Settings, Bell, Star, CheckCircle, XCircle, Play, MapPin, User } from 'lucide-react'
+import { bookingsApi, Tutor, tutorsApi, CourseBooking } from '../lib/api'
 
 // Lokalisierung
 moment.locale('de')
@@ -78,6 +78,7 @@ export default function DashboardPage() {
     certificates: 0
   })
   const [bookings, setBookings] = useState<Booking[]>([])
+  const [courseBookings, setCourseBookings] = useState<CourseBooking[]>([])
   const [tutors, setTutors] = useState<Tutor[]>([])
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([])
   const [selectedDate, setSelectedDate] = useState(new Date())
@@ -85,13 +86,15 @@ export default function DashboardPage() {
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
-        const [bookingsRes, tutorsRes] = await Promise.all([
-                  bookingsApi.getAll(),
-        tutorsApi.getAll()
+        const [bookingsRes, tutorsRes, courseBookingsRes] = await Promise.all([
+          bookingsApi.getAll(),
+          tutorsApi.getAll(),
+          user?.role === 'student' ? bookingsApi.getStudentCourses() : Promise.resolve({ courseBookings: [] })
         ])
         
         const jsonBookingsData = bookingsRes.bookings || []
         const tutorsData = tutorsRes.tutors || []
+        const courseBookingsData = courseBookingsRes.courseBookings || []
         
         // Lade localStorage-Buchungen
         const localBookings = JSON.parse(localStorage.getItem('userBookings') || '[]')
@@ -100,6 +103,7 @@ export default function DashboardPage() {
         const allBookings = [...jsonBookingsData, ...localBookings]
         
         setBookings(allBookings)
+        setCourseBookings(courseBookingsData)
         setTutors(tutorsData)
         
         // Convert bookings to calendar events
@@ -477,6 +481,157 @@ export default function DashboardPage() {
     )
   }
 
+  const renderCourses = () => {
+    const sortedCourseBookings = courseBookings.sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )
+
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-gray-900">Meine Kurse</h2>
+          <div className="flex gap-2">
+            <select 
+              className="border rounded-md px-3 py-2 text-sm"
+              onChange={(e) => {
+                // Filter course bookings by status
+                if (e.target.value === 'all') {
+                  // Reset to original data - would need to reload from API
+                  return
+                }
+                // In a real implementation, you'd filter the data or reload from API
+              }}
+            >
+              <option value="all">Alle Status</option>
+              <option value="confirmed">Bestätigt</option>
+              <option value="pending">Ausstehend</option>
+              <option value="cancelled">Storniert</option>
+              <option value="completed">Abgeschlossen</option>
+            </select>
+          </div>
+        </div>
+
+        {sortedCourseBookings.length === 0 ? (
+          <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+            <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">Keine Kursbuchungen</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Sie haben noch keine Kurse gebucht. Entdecken Sie unsere Kursangebote!
+            </p>
+            <div className="mt-6">
+              <button
+                onClick={() => navigate('/courses')}
+                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Kurse durchsuchen
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {sortedCourseBookings.map((courseBooking) => (
+              <div key={courseBooking.id} className="bg-white rounded-lg shadow-sm overflow-hidden">
+                {courseBooking.course_image && (
+                  <div className="aspect-w-16 aspect-h-9">
+                    <img
+                      src={courseBooking.course_image}
+                      alt={courseBooking.course_title}
+                      className="w-full h-48 object-cover"
+                    />
+                  </div>
+                )}
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                      courseBooking.course_level === 'A1' || courseBooking.course_level === 'A2' ? 'bg-green-100 text-green-800' :
+                      courseBooking.course_level === 'B1' || courseBooking.course_level === 'B2' ? 'bg-blue-100 text-blue-800' :
+                      'bg-purple-100 text-purple-800'
+                    }`}>
+                      {courseBooking.course_level}
+                    </span>
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                      courseBooking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                      courseBooking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                      courseBooking.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {courseBooking.status === 'confirmed' ? 'Bestätigt' :
+                       courseBooking.status === 'pending' ? 'Ausstehend' :
+                       courseBooking.status === 'cancelled' ? 'Storniert' : 'Abgeschlossen'}
+                    </span>
+                  </div>
+                  
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {courseBooking.course_title}
+                  </h3>
+                  
+                  <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                    {courseBooking.course_description}
+                  </p>
+                  
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-center text-sm text-gray-600">
+                      <Users className="w-4 h-4 mr-2" />
+                      <span>{courseBooking.school_name}</span>
+                    </div>
+                    <div className="flex items-center text-sm text-gray-600">
+                      <MapPin className="w-4 h-4 mr-2" />
+                      <span>{courseBooking.school_location}</span>
+                    </div>
+                    {courseBooking.schedule && (
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Calendar className="w-4 h-4 mr-2" />
+                        <span>{courseBooking.schedule}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center text-sm text-gray-600">
+                      <Clock className="w-4 h-4 mr-2" />
+                      <span>
+                        {courseBooking.duration_weeks} Wochen • {courseBooking.hours_per_week} Stunden/Woche
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="text-2xl font-bold text-gray-900">
+                      {courseBooking.total_price} {courseBooking.currency}
+                    </div>
+                    <div className="flex space-x-2">
+                      {courseBooking.meeting_link && (
+                        <button
+                          onClick={() => window.open(courseBooking.meeting_link, '_blank')}
+                          className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200"
+                        >
+                          <Play className="w-3 h-3 mr-1" />
+                          Join
+                        </button>
+                      )}
+                      <button
+                        onClick={() => navigate(`/courses/${courseBooking.course_id}`)}
+                        className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                      >
+                        Details
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {courseBooking.tutor_name && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex items-center text-sm text-gray-600">
+                        <User className="w-4 h-4 mr-2" />
+                        <span>Tutor: {courseBooking.tutor_name}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   if (!user) {
     return <div>Loading...</div>
   }
@@ -557,50 +712,50 @@ export default function DashboardPage() {
         </div>
 
         {/* Tab Content */}
-        <div className="space-y-6">
+              <div className="space-y-6">
           {activeTab === 'overview' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Left Column */}
               <div className="lg:col-span-2 space-y-6">
                 {/* Upcoming Lessons */}
-                <div className="bg-white rounded-lg shadow-sm p-6">
+                    <div className="bg-white rounded-lg shadow-sm p-6">
                   <h2 className="text-lg font-semibold text-gray-900 mb-4">Kommende Termine</h2>
-                  <div className="space-y-4">
-                    {upcomingLessons.map(lesson => (
+                      <div className="space-y-4">
+                        {upcomingLessons.map(lesson => (
                       <div key={lesson.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                         <div className="flex items-center space-x-4">
                           <div className="bg-blue-100 rounded-full p-2">
                             <Calendar className="w-6 h-6 text-blue-700" />
                           </div>
-                          <div>
-                            <div className="font-medium text-gray-900">{lesson.course}</div>
+                            <div>
+                              <div className="font-medium text-gray-900">{lesson.course}</div>
                             <div className="text-sm text-gray-500">
                               {lesson.date} • {lesson.time}
+                              </div>
+                              </div>
                             </div>
-                          </div>
-                        </div>
                         <div className="text-sm">
                           <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-800">
                             {lesson.type}
-                          </span>
-                        </div>
-                      </div>
+                                </span>
+                              </div>
+                            </div>
                     ))}
+                          </div>
                   </div>
-                </div>
 
                 {/* Calendar */}
                 <div className="bg-white rounded-lg shadow-sm p-6">
                   <h2 className="text-lg font-semibold text-gray-900 mb-4">Kalender</h2>
-                  <BigCalendar
-                    localizer={localizer}
-                    events={calendarEvents}
-                    startAccessor="start"
-                    endAccessor="end"
+                    <BigCalendar
+                      localizer={localizer}
+                      events={calendarEvents}
+                      startAccessor="start"
+                      endAccessor="end"
                     style={{ height: 400 }}
                     defaultView="month"
                     views={['month', 'week', 'day']}
-                    messages={{
+                      messages={{
                       next: "Weiter",
                       previous: "Zurück",
                       today: "Heute",
@@ -608,9 +763,9 @@ export default function DashboardPage() {
                       week: "Woche",
                       day: "Tag"
                     }}
-                  />
+                    />
+                  </div>
                 </div>
-              </div>
 
               {/* Right Column */}
               <div className="space-y-6">
@@ -620,46 +775,48 @@ export default function DashboardPage() {
                   <div className="space-y-4">
                     {recentActivities.map((activity, index) => {
                       const Icon = activity.icon
-                      return (
+                        return (
                         <div key={index} className="flex items-start space-x-3">
                           <div className={`mt-1 ${activity.color}`}>
                             <Icon className="w-5 h-5" />
-                          </div>
-                          <div>
+                              </div>
+                              <div>
                             <p className="text-sm font-medium text-gray-900">{activity.title}</p>
                             <p className="text-xs text-gray-500">{activity.date}</p>
+                            </div>
                           </div>
-                        </div>
-                      )
-                    })}
+                        )
+                      })}
                   </div>
                 </div>
 
                 {/* Progress Overview */}
                 <div className="bg-white rounded-lg shadow-sm p-6">
                   <h2 className="text-lg font-semibold text-gray-900 mb-4">Fortschritt</h2>
-                  <div className="space-y-4">
+                    <div className="space-y-4">
                     {enrolledCourses.map(course => (
                       <div key={course.id} className="space-y-2">
                         <div className="flex justify-between items-center">
                           <span className="text-sm font-medium text-gray-900">{course.title}</span>
                           <span className="text-sm text-gray-500">{course.progress}%</span>
-                        </div>
+                          </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div
                             className="bg-blue-600 h-2 rounded-full"
                             style={{ width: `${course.progress}%` }}
-                          />
-                        </div>
+                              />
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
           {activeTab === 'bookings' && renderBookings()}
+          
+          {activeTab === 'courses' && user?.role === 'student' && renderCourses()}
           
           {/* Other tab content */}
         </div>

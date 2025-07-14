@@ -284,6 +284,13 @@ router.post('/tutor', [
     start_date, end_date, is_online, description
   } = req.body;
 
+  // Find the tutor's ID for the logged-in user
+  const tutorResult = await query('SELECT id FROM tutors WHERE user_id = $1', [req.user!.id]);
+  if (tutorResult.rows.length === 0) {
+    throw new AppError('Tutor-Profil nicht gefunden', 404);
+  }
+  const tutorId = tutorResult.rows[0].id;
+
   // Insert new course for this tutor
   const result = await query(
     `INSERT INTO courses (
@@ -293,7 +300,7 @@ router.post('/tutor', [
     RETURNING *`,
     [
       title, level, category, price, duration_weeks || 1, hours_per_week || 1, max_students || 1,
-      start_date, end_date, is_online ?? true, description || '', req.user!.id
+      start_date, end_date, is_online ?? true, description || '', tutorId
     ]
   );
 
@@ -437,6 +444,52 @@ router.delete('/:id', [
   });
 }));
 
+// Tutor löscht eigenen Kurs
+router.delete('/tutor/:id', [
+  authenticateToken,
+  requireTutorOrAdmin
+], asyncHandler(async (req: Request, res: Response) => {
+  const courseId = parseInt(req.params.id);
+  if (isNaN(courseId)) {
+    throw validationError('Ungültige Kurs-ID');
+  }
+
+  // Find the tutor's ID for the logged-in user
+  const tutorResult = await query('SELECT id FROM tutors WHERE user_id = $1', [req.user!.id]);
+  if (tutorResult.rows.length === 0) {
+    throw new AppError('Tutor-Profil nicht gefunden', 404);
+  }
+  const tutorId = tutorResult.rows[0].id;
+
+  // Check if the course belongs to this tutor
+  const courseResult = await query('SELECT id, tutor_id FROM courses WHERE id = $1', [courseId]);
+  if (courseResult.rows.length === 0) {
+    throw new AppError('Kurs nicht gefunden', 404);
+  }
+  if (courseResult.rows[0].tutor_id !== tutorId) {
+    throw new AppError('Keine Berechtigung diesen Kurs zu löschen', 403);
+  }
+
+  // Check for active bookings
+  const activeBookings = await query(
+    'SELECT COUNT(*) FROM bookings WHERE course_id = $1 AND status IN ($2, $3)',
+    [courseId, 'pending', 'confirmed']
+  );
+  if (parseInt(activeBookings.rows[0].count) > 0) {
+    throw new AppError('Kurs kann nicht gelöscht werden. Es existieren aktive Buchungen.', 409);
+  }
+
+  // Soft delete the course
+  await query(
+    'UPDATE courses SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+    [courseId]
+  );
+
+  res.json({
+    message: 'Kurs erfolgreich gelöscht'
+  });
+}));
+
 // Kurs buchen
 router.post('/:id/book', [
   authenticateToken,
@@ -517,6 +570,67 @@ router.post('/:id/book', [
   res.status(201).json({
     message: 'Kurs erfolgreich gebucht',
     booking: bookingResult.rows[0]
+  });
+}));
+
+// Kurs aktivieren/deaktivieren (Admin/Schule/Tutor)
+router.patch('/:id/status', [
+  authenticateToken,
+  requireSchoolOrAdmin,
+  body('is_active')
+    .isBoolean()
+    .withMessage('Status muss ein Boolean sein'),
+  body('reason')
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Grund zu lang')
+], asyncHandler(async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw validationError('Eingabedaten sind ungültig');
+  }
+
+  const courseId = parseInt(req.params.id);
+  if (isNaN(courseId)) {
+    throw validationError('Ungültige Kurs-ID');
+  }
+
+  const { is_active, reason } = req.body;
+
+  // Berechtigung prüfen
+  const courseResult = await query(
+    `SELECT c.id, c.school_id, s.owner_id 
+     FROM courses c
+     JOIN schools s ON c.school_id = s.id
+     WHERE c.id = $1`,
+    [courseId]
+  );
+
+  if (courseResult.rows.length === 0) {
+    throw new AppError('Kurs nicht gefunden', 404);
+  }
+
+  const course = courseResult.rows[0];
+  if (req.user!.role !== 'admin' && req.user!.role !== 'tutor' && course.owner_id !== req.user!.id) {
+    throw new AppError('Keine Berechtigung diesen Kurs zu bearbeiten', 403);
+  }
+
+  // Status aktualisieren
+  await query(
+    'UPDATE courses SET is_active = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+    [is_active, courseId]
+  );
+
+  // Aktualisierten Kurs abrufen
+  const updatedResult = await query(
+    'SELECT * FROM courses WHERE id = $1',
+    [courseId]
+  );
+
+  res.json({
+    message: `Kurs ${is_active ? 'aktiviert' : 'deaktiviert'}`,
+    course: updatedResult.rows[0]
   });
 }));
 

@@ -154,6 +154,17 @@ export default function MVPNavbar() {
                       </Link>
                     )}
 
+                    {user.role === 'student' && (
+                      <Link
+                        to="/student-tutor-dashboard"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center px-4 py-3 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
+                      >
+                        <User className="mr-3" size={16} />
+                        Meine Tutoren
+                      </Link>
+                    )}
+
                     <Link
                       to="/favoriten"
                       onClick={() => setIsUserMenuOpen(false)}

@@ -11,6 +11,7 @@ import MVPHomepage from './pages/MVPHomepage'
 import ComparisonHub from './pages/ComparisonHub'
 import TutorRegistrationPage from './pages/TutorRegistrationPage'
 import TutorDashboard from './pages/TutorDashboard'
+import StudentTutorDashboard from './pages/StudentTutorDashboard'
 
 // Existing Pages (simplified for MVP)
 import TutorsPage from './pages/TutorsPage'
@@ -45,6 +46,7 @@ function MVPApp() {
                   <Route path="/tutor-anmeldung" element={<TutorRegistrationPage />} />
                   <Route path="/tutor-registration" element={<TutorRegistrationPage />} />
                   <Route path="/tutor-dashboard" element={<TutorDashboard />} />
+                  <Route path="/student-tutor-dashboard" element={<StudentTutorDashboard />} />
                   
                   {/* Schools - Simplified */}
                   <Route path="/schulen" element={<SchoolsPage />} />

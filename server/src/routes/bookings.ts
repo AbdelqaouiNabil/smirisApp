@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { body, query as expressQuery, validationResult } from 'express-validator';
 import { query } from '../database/connection';
 import { authenticateToken, requireTutorOrAdmin, requireSchoolOrAdmin } from '../middleware/auth';
@@ -13,7 +13,7 @@ router.get('/', [
   expressQuery('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Ungültiges Limit'),
   expressQuery('status').optional().isIn(['pending', 'confirmed', 'cancelled', 'completed']).withMessage('Ungültiger Status'),
   expressQuery('type').optional().isIn(['course', 'tutor', 'visa']).withMessage('Ungültiger Buchungstyp')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     throw validationError('Ungültige Abfrageparameter');
@@ -82,6 +82,7 @@ router.get('/', [
       b.time_slot, b.duration_minutes, b.total_price, b.currency, 
       b.payment_status, b.notes, b.meeting_link, b.is_recurring, 
       b.recurring_pattern, b.created_at, b.updated_at,
+      b.tutor_id, -- Ensure tutor_id is included
       -- Student-Informationen
       s.name as student_name, s.email as student_email,
       -- Kurs-Informationen
@@ -119,7 +120,7 @@ router.get('/', [
 }));
 
 // Einzelne Buchung abrufen
-router.get('/:id', authenticateToken, asyncHandler(async (req, res) => {
+router.get('/:id', authenticateToken, asyncHandler(async (req: Request, res: Response) => {
   const bookingId = parseInt(req.params.id);
   if (isNaN(bookingId)) {
     throw validationError('Ungültige Buchungs-ID');
@@ -197,7 +198,7 @@ router.post('/', [
     .trim()
     .isLength({ max: 500 })
     .withMessage('Notizen zu lang')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     throw validationError('Eingabedaten sind ungültig');
@@ -256,7 +257,7 @@ router.post('/', [
       }
 
       // Prüfen ob der gewünschte Zeitslot verfügbar ist
-      const timeSlotAvailable = daySchedule.timeSlots?.some(slot => 
+      const timeSlotAvailable = daySchedule.timeSlots?.some((slot: { start: any; available: boolean; }) => 
         slot.start === time_slot && slot.available === true
       );
 
@@ -302,7 +303,7 @@ router.post('/', [
     if (updatedAvailability.weeklySchedule && updatedAvailability.weeklySchedule[dayOfWeek]) {
       // Zeitslot als nicht verfügbar markieren
       updatedAvailability.weeklySchedule[dayOfWeek].timeSlots = 
-        updatedAvailability.weeklySchedule[dayOfWeek].timeSlots.map(slot => 
+        updatedAvailability.weeklySchedule[dayOfWeek].timeSlots.map((slot: { start: any; }) => 
           slot.start === time_slot 
             ? { ...slot, available: false }
             : slot
@@ -331,7 +332,7 @@ router.post('/', [
 }));
 
 // Buchungsstatus aktualisieren
-router.patch('/:id/status', [
+router.patch('/:id/status', authenticateToken, [
   body('status')
     .isIn(['pending', 'confirmed', 'cancelled', 'completed'])
     .withMessage('Ungültiger Status'),
@@ -340,7 +341,7 @@ router.patch('/:id/status', [
     .trim()
     .isLength({ max: 500 })
     .withMessage('Notizen zu lang')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     throw validationError('Eingabedaten sind ungültig');
@@ -451,7 +452,7 @@ router.patch('/:id/status', [
 }));
 
 // Buchung stornieren
-router.delete('/:id', asyncHandler(async (req, res) => {
+router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
   const bookingId = parseInt(req.params.id);
   if (isNaN(bookingId)) {
     throw validationError('Ungültige Buchungs-ID');
@@ -513,7 +514,7 @@ router.delete('/:id', asyncHandler(async (req, res) => {
       if (updatedAvailability.weeklySchedule && updatedAvailability.weeklySchedule[dayOfWeek]) {
         // Zeitslot wieder als verfügbar markieren
         updatedAvailability.weeklySchedule[dayOfWeek].timeSlots = 
-          updatedAvailability.weeklySchedule[dayOfWeek].timeSlots.map(slot => 
+          updatedAvailability.weeklySchedule[dayOfWeek].timeSlots.map((slot: { start: any; }) => 
             slot.start === booking.time_slot 
               ? { ...slot, available: true }
               : slot
@@ -546,7 +547,7 @@ router.patch('/:id/meeting-link', [
   body('meeting_link')
     .isURL()
     .withMessage('Ungültiger Meeting-Link')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     throw validationError('Eingabedaten sind ungültig');
@@ -611,8 +612,97 @@ router.patch('/:id/meeting-link', [
   });
 }));
 
+// Student course bookings abrufen
+router.get('/student/courses', [
+  authenticateToken,
+  expressQuery('page').optional().isInt({ min: 1 }).withMessage('Ungültige Seitenzahl'),
+  expressQuery('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Ungültiges Limit'),
+  expressQuery('status').optional().isIn(['pending', 'confirmed', 'cancelled', 'completed']).withMessage('Ungültiger Status')
+], asyncHandler(async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw validationError('Ungültige Abfrageparameter');
+  }
+
+  // Nur Studenten können ihre Kursbuchungen abrufen
+  if (req.user!.role !== 'student') {
+    throw new AppError('Nur Studenten können ihre Kursbuchungen abrufen', 403);
+  }
+
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 20;
+  const offset = (page - 1) * limit;
+  const status = req.query.status as string;
+
+  let whereConditions = ['b.student_id = $1', 'b.booking_type = $2'];
+  let queryParams = [req.user!.id, 'course'];
+  let paramIndex = 3;
+
+  if (status) {
+    whereConditions.push(`b.status = $${paramIndex++}`);
+    queryParams.push(status);
+  }
+
+  const whereClause = `WHERE ${whereConditions.join(' AND ')}`;
+
+  // Gesamtzahl der Kursbuchungen
+  const countResult = await query(
+    `SELECT COUNT(*) 
+     FROM bookings b
+     LEFT JOIN courses c ON b.course_id = c.id
+     LEFT JOIN schools s ON c.school_id = s.id
+     ${whereClause}`,
+    queryParams
+  );
+  const total = parseInt(countResult.rows[0].count);
+
+  // Kursbuchungen abrufen
+  queryParams.push(limit, offset);
+  const result = await query(
+    `SELECT 
+      b.id, b.uuid, b.status, b.start_date, b.end_date, 
+      b.time_slot, b.duration_minutes, b.total_price, b.currency, 
+      b.payment_status, b.notes, b.meeting_link, b.is_recurring, 
+      b.recurring_pattern, b.created_at, b.updated_at,
+      -- Kurs-Informationen
+      c.id as course_id, c.title as course_title, c.level as course_level,
+      c.description as course_description, c.price as course_price,
+      c.duration_weeks, c.hours_per_week, c.max_students, c.enrolled_students,
+      c.start_date as course_start_date, c.end_date as course_end_date,
+      c.schedule, c.is_online, c.image_url as course_image,
+      -- Schule-Informationen
+      s.id as school_id, s.name as school_name, s.location as school_location,
+      s.address as school_address, s.phone as school_phone, s.email as school_email,
+      s.rating as school_rating, s.image_url as school_image,
+      -- Tutor-Informationen (falls vorhanden)
+      t.id as tutor_id, tu.name as tutor_name, tu.email as tutor_email,
+      t.hourly_rate as tutor_rate, t.bio as tutor_bio
+     FROM bookings b
+     LEFT JOIN courses c ON b.course_id = c.id
+     LEFT JOIN schools s ON c.school_id = s.id
+     LEFT JOIN tutors t ON c.tutor_id = t.id
+     LEFT JOIN users tu ON t.user_id = tu.id
+     ${whereClause}
+     ORDER BY b.created_at DESC
+     LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
+    queryParams
+  );
+
+  res.json({
+    courseBookings: result.rows,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      hasNext: page * limit < total,
+      hasPrev: page > 1
+    }
+  });
+}));
+
 // Buchungsstatistiken abrufen
-router.get('/stats/overview', asyncHandler(async (req, res) => {
+router.get('/stats/overview', asyncHandler(async (req: Request, res: Response) => {
   let whereCondition = '';
   const queryParams: any[] = [];
 

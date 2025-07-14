@@ -25,6 +25,7 @@ import {
   Phone
 } from 'lucide-react'
 import { schoolsApi, coursesApi } from '../lib/api'
+import { apiClient } from '../lib/api';
 
 interface AdminStats {
   totalUsers: number
@@ -101,79 +102,55 @@ const AdminPanel = () => {
 
   const loadAdminData = async () => {
     try {
-      // Lade Schools und Courses aus den JSON-Dateien
-      const schoolsResponse = await schoolsApi.getAll({ limit: 100 })
-      const coursesResponse = await coursesApi.getAll({ limit: 100 })
-      
-      const schoolsData = schoolsResponse.data
-      const coursesData = coursesResponse.data
-      
-      setSchools(schoolsData)
-      setCourses(coursesData)
-
-      // Simuliere Admin-Statistiken
+      // Fetch real admin dashboard stats
+      const response = await apiClient.get('/admin/dashboard') as any;
+      const overview = response.overview || {};
       setStats({
-        totalUsers: 1247,
-        totalSchools: schoolsData.length || 610,
-        totalCourses: coursesData.length || 2024,
-        totalBookings: 456,
-        monthlyRevenue: 125000,
-        newUsersThisMonth: 89,
-        activeSchools: Math.floor((schoolsData.length || 610) * 0.85),
-        pendingApplications: 23
-      })
-
-      // Simuliere User-Daten
-      const mockUsers: AdminUser[] = [
-        {
-          id: '1',
-          name: 'Ahmed El Mansouri',
-          email: 'ahmed@student.com',
-          role: 'student',
-          registrationDate: '2025-06-15',
-          lastLogin: '2025-06-22',
-          status: 'active',
-          city: 'Casablanca',
-          whatsappNumber: '+212 6xx-xxx-xxx'
-        },
-        {
-          id: '2',
-          name: 'Fatima Benali',
-          email: 'fatima@student.com',
-          role: 'student',
-          registrationDate: '2025-06-10',
-          lastLogin: '2025-06-21',
-          status: 'active',
-          city: 'Rabat',
-          whatsappNumber: '+212 6xx-xxx-xxx'
-        },
-        {
-          id: '3',
-          name: 'Goethe Institut Casablanca',
-          email: 'contact@goethe-casa.com',
-          role: 'school',
-          registrationDate: '2025-05-20',
-          lastLogin: '2025-06-22',
-          status: 'active'
-        },
-        {
-          id: '4',
-          name: 'Dr. Maria Schmidt',
-          email: 'maria@tutor.com',
-          role: 'tutor',
-          registrationDate: '2025-06-01',
-          lastLogin: '2025-06-21',
-          status: 'active'
-        }
-      ]
-      setUsers(mockUsers)
-
-      // Lade Page Visibility aus localStorage
-      const savedVisibility = localStorage.getItem('admin_page_visibility')
-      if (savedVisibility) {
-        setPageVisibility(JSON.parse(savedVisibility))
-      }
-
+        totalUsers: overview.total_users || 0,
+        totalSchools: overview.total_schools || 0,
+        totalCourses: overview.total_courses || 0,
+        totalBookings: overview.total_bookings || 0,
+        monthlyRevenue: overview.total_revenue || 0,
+        newUsersThisMonth: 0, // You can add this from response.growth if needed
+        activeSchools: overview.total_schools || 0, // Adjust if you have active/inactive
+        pendingApplications: 0 // Add from response if available
+      });
+      // Fetch real users for the Benutzer tab
+      const usersRes = await apiClient.get('/admin/users') as any;
+      const realUsers = (usersRes.users || []).map((u: any) => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        registrationDate: u.created_at,
+        lastLogin: u.last_login,
+        status: u.is_active ? 'active' : 'inactive',
+        city: u.location || '',
+        whatsappNumber: u.whatsappNumber || ''
+      }));
+      setUsers(realUsers);
+      // Fetch real schools for the Schulen tab
+      const schoolsRes = await apiClient.get('/schools') as any;
+      const realSchools = (schoolsRes.schools || []).map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        location: s.location,
+        email: s.email,
+        phone: s.phone,
+        isActive: s.is_verified || s.is_active,
+      }));
+      setSchools(realSchools);
+      // Fetch real courses for the Kurse tab
+      const coursesRes = await apiClient.get('/courses') as any;
+      const realCourses = (coursesRes.courses || []).map((c: any) => ({
+        id: c.id,
+        title: c.title,
+        description: c.description,
+        price: c.price,
+        category: c.category,
+      }));
+      setCourses(realCourses);
+      // Optionally, set other state from response (recentActivity, etc.)
     } catch (error) {
       console.error('Error loading admin data:', error)
       toast({
@@ -225,6 +202,73 @@ const AdminPanel = () => {
       description: "Benutzerdaten wurden exportiert",
     })
   }
+
+  // Delete handlers
+  const handleDeleteUser = async (id: string) => {
+    if (!window.confirm('Möchten Sie diesen Benutzer wirklich löschen?')) return;
+    try {
+      await apiClient.delete(`/admin/users/${id}`);
+      setUsers((prev) => prev.filter((u) => u.id !== id));
+      toast({ title: 'Benutzer gelöscht', description: 'Der Benutzer wurde erfolgreich entfernt.' });
+    } catch (error: any) {
+      toast({ title: 'Fehler beim Löschen des Benutzers', description: error.message, variant: 'destructive' });
+    }
+  };
+  const handleDeleteSchool = async (id: number) => {
+    if (!window.confirm('Möchten Sie diese Schule wirklich löschen?')) return;
+    try {
+      await schoolsApi.delete(id);
+      setSchools((prev) => prev.filter((s) => s.id !== id));
+      toast({ title: 'Schule gelöscht', description: 'Die Schule wurde erfolgreich entfernt.' });
+    } catch (error: any) {
+      toast({ title: 'Fehler beim Löschen der Schule', description: error.message, variant: 'destructive' });
+    }
+  };
+  const handleDeleteCourse = async (id: number) => {
+    if (!window.confirm('Möchten Sie diesen Kurs wirklich löschen?')) return;
+    try {
+      await coursesApi.delete(id);
+      setCourses((prev) => prev.filter((c) => c.id !== id));
+      toast({ title: 'Kurs gelöscht', description: 'Der Kurs wurde erfolgreich entfernt.' });
+    } catch (error: any) {
+      toast({ title: 'Fehler beim Löschen des Kurses', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  // Activate/Deactivate handlers
+  const handleToggleUserStatus = async (user: AdminUser) => {
+    const newStatus = user.status !== 'active';
+    if (!window.confirm(`Möchten Sie diesen Benutzer wirklich ${newStatus ? 'aktivieren' : 'deaktivieren'}?`)) return;
+    try {
+      await apiClient.patch(`/admin/users/${user.id}/status`, { is_active: newStatus });
+      setUsers((prev) => prev.map((u) => u.id === user.id ? { ...u, status: newStatus ? 'active' : 'inactive' } : u));
+      toast({ title: `Benutzer ${newStatus ? 'aktiviert' : 'deaktiviert'}`, description: `Der Benutzer wurde erfolgreich ${newStatus ? 'aktiviert' : 'deaktiviert'}.` });
+    } catch (error: any) {
+      toast({ title: 'Fehler beim Statuswechsel', description: error.message, variant: 'destructive' });
+    }
+  };
+  const handleToggleSchoolStatus = async (school: any) => {
+    const newStatus = !school.isActive;
+    if (!window.confirm(`Möchten Sie diese Schule wirklich ${newStatus ? 'aktivieren' : 'deaktivieren'}?`)) return;
+    try {
+      await apiClient.patch(`/schools/${school.id}/status`, { is_active: newStatus });
+      setSchools((prev) => prev.map((s) => s.id === school.id ? { ...s, isActive: newStatus } : s));
+      toast({ title: `Schule ${newStatus ? 'aktiviert' : 'deaktiviert'}`, description: `Die Schule wurde erfolgreich ${newStatus ? 'aktiviert' : 'deaktiviert'}.` });
+    } catch (error: any) {
+      toast({ title: 'Fehler beim Statuswechsel', description: error.message, variant: 'destructive' });
+    }
+  };
+  const handleToggleCourseStatus = async (course: any) => {
+    const newStatus = !course.isActive;
+    if (!window.confirm(`Möchten Sie diesen Kurs wirklich ${newStatus ? 'aktivieren' : 'deaktivieren'}?`)) return;
+    try {
+      await apiClient.patch(`/courses/${course.id}/status`, { is_active: newStatus });
+      setCourses((prev) => prev.map((c) => c.id === course.id ? { ...c, isActive: newStatus } : c));
+      toast({ title: `Kurs ${newStatus ? 'aktiviert' : 'deaktiviert'}`, description: `Der Kurs wurde erfolgreich ${newStatus ? 'aktiviert' : 'deaktiviert'}.` });
+    } catch (error: any) {
+      toast({ title: 'Fehler beim Statuswechsel', description: error.message, variant: 'destructive' });
+    }
+  };
 
   const renderDashboardTab = () => (
     <div className="space-y-6">
@@ -412,7 +456,10 @@ const AdminPanel = () => {
                     <button className="text-blue-600 hover:text-blue-900">
                       <Edit className="w-4 h-4" />
                     </button>
-                    <button className="text-red-600 hover:text-red-900">
+                    <button className="text-gray-600 hover:text-gray-900" onClick={() => handleToggleUserStatus(user)}>
+                      {user.status === 'active' ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                    <button className="text-red-600 hover:text-red-900" onClick={() => handleDeleteUser(user.id)}>
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -425,142 +472,185 @@ const AdminPanel = () => {
     </div>
   )
 
-  const renderContentTab = () => (
+  // Add renderSchoolsTab for the schools tab
+  const renderSchoolsTab = () => (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">Content Management</h2>
-      
-      {/* Page Visibility Controls */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Seitensichtbarkeit verwalten</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Object.entries(pageVisibility).map(([page, visible]) => (
-            <div key={page} className="flex items-center justify-between p-4 border rounded-lg">
-              <div className="flex items-center space-x-3">
-                {visible ? (
-                  <Eye className="w-5 h-5 text-green-600" />
-                ) : (
-                  <EyeOff className="w-5 h-5 text-red-600" />
-                )}
-                <span className="font-medium capitalize">{page}</span>
-              </div>
-              <button
-                onClick={() => togglePageVisibility(page as keyof PageVisibility)}
-                className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  visible 
-                    ? 'bg-green-100 text-green-800 hover:bg-green-200' 
-                    : 'bg-red-100 text-red-800 hover:bg-red-200'
-                }`}
-              >
-                {visible ? 'Aktiv' : 'Deaktiviert'}
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm">Schulen gesamt</p>
-              <p className="text-2xl font-bold text-gray-900">{schools.length}</p>
-            </div>
-            <School className="w-8 h-8 text-blue-600" />
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm">Kurse verfügbar</p>
-              <p className="text-2xl font-bold text-gray-900">{courses.length}</p>
-            </div>
-            <BookOpen className="w-8 h-8 text-green-600" />
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm">Wartende Anträge</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.pendingApplications}</p>
-            </div>
-            <FileText className="w-8 h-8 text-orange-600" />
-          </div>
-        </div>
+      <h2 className="text-2xl font-bold text-gray-900">Schulen Verwaltung</h2>
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ort</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">E-Mail</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Telefon</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {schools.map((school: any) => (
+              <tr key={school.id}>
+                <td className="px-6 py-4 whitespace-nowrap">{school.name}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{school.location}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{school.email}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{school.phone}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${school.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{school.isActive ? 'Aktiv' : 'Inaktiv'}</span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <div className="flex items-center space-x-2">
+                    <button className="text-blue-600 hover:text-blue-900">
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button className="text-gray-600 hover:text-gray-900" onClick={() => handleToggleSchoolStatus(school)}>
+                      {school.isActive ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                    <button className="text-red-600 hover:text-red-900" onClick={() => handleDeleteSchool(school.id)}>
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
-  )
+  );
 
-  if (!canAccessAdminPanel()) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-lg text-center">
-          <ShieldCheck className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Zugriff verweigert</h2>
-          <p className="text-gray-600">Sie haben keine Berechtigung für das Admin-Panel.</p>
-        </div>
+  // Update renderCoursesTab to use real course data
+  const renderCoursesTab = () => (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-gray-900">Kurse Verwaltung</h2>
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Titel</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Beschreibung</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preis</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategorie</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aktionen</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {courses.map((course: any) => (
+              <tr key={course.id}>
+                <td className="px-6 py-4 whitespace-nowrap">{course.title}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{course.description}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{course.price} MAD</td>
+                <td className="px-6 py-4 whitespace-nowrap">{course.category}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <div className="flex items-center space-x-2">
+                    <button className="text-blue-600 hover:text-blue-900">
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button className="text-gray-600 hover:text-gray-900" onClick={() => handleToggleCourseStatus(course)}>
+                      {course.isActive ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                    <button className="text-red-600 hover:text-red-900" onClick={() => handleDeleteCourse(course.id)}>
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-    )
-  }
+    </div>
+  );
+
+  const renderVisaServicesTab = () => (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-gray-900">Visa-Dienste Verwaltung</h2>
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dienst</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Beschreibung</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preis</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aktionen</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {/* Placeholder for visa services data */}
+            <tr>
+              <td className="px-6 py-4 whitespace-nowrap">Visa für Studenten</td>
+              <td className="px-6 py-4 whitespace-nowrap">Visa-Prozessberatung und Unterstützung</td>
+              <td className="px-6 py-4 whitespace-nowrap">500 MAD</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <div className="flex items-center space-x-2">
+                  <button className="text-blue-600 hover:text-blue-900">
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button className="text-red-600 hover:text-red-900">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Admin Panel</h1>
-          <p className="text-gray-600">Willkommen zurück, {user?.name}</p>
-        </div>
+    <div className="container mx-auto p-6">
+      <h1 className="text-3xl font-bold text-gray-900 mb-6">Admin-Panel</h1>
 
-        {/* Tabs */}
-        <div className="bg-white rounded-lg shadow mb-8">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
-              <button
-                onClick={() => setActiveTab('dashboard')}
-                className={`py-4 px-6 border-b-2 font-medium text-sm ${
-                  activeTab === 'dashboard'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <BarChart3 className="w-4 h-4 inline mr-2" />
-                Dashboard
-              </button>
-              <button
-                onClick={() => setActiveTab('users')}
-                className={`py-4 px-6 border-b-2 font-medium text-sm ${
-                  activeTab === 'users'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <Users className="w-4 h-4 inline mr-2" />
-                Benutzer
-              </button>
-              <button
-                onClick={() => setActiveTab('content')}
-                className={`py-4 px-6 border-b-2 font-medium text-sm ${
-                  activeTab === 'content'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <Settings className="w-4 h-4 inline mr-2" />
-                Content
-              </button>
-            </nav>
-          </div>
-
-          <div className="p-6">
-            {activeTab === 'dashboard' && renderDashboardTab()}
-            {activeTab === 'users' && renderUsersTab()}
-            {activeTab === 'content' && renderContentTab()}
-          </div>
-        </div>
+      {/* Tabs */}
+      <div className="flex border-b border-gray-200 mb-6">
+        <button
+          onClick={() => setActiveTab('dashboard')}
+          className={`py-4 px-6 border-b-2 font-medium text-lg ${
+            activeTab === 'dashboard' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Dashboard
+        </button>
+        <button
+          onClick={() => setActiveTab('users')}
+          className={`py-4 px-6 border-b-2 font-medium text-lg ${
+            activeTab === 'users' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Benutzerverwaltung
+        </button>
+        <button
+          onClick={() => setActiveTab('schools')}
+          className={`py-4 px-6 border-b-2 font-medium text-lg ${
+            activeTab === 'schools' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Schulen
+        </button>
+        <button
+          onClick={() => setActiveTab('courses')}
+          className={`py-4 px-6 border-b-2 font-medium text-lg ${
+            activeTab === 'courses' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Kurse
+        </button>
+        <button
+          onClick={() => setActiveTab('visaServices')}
+          className={`py-4 px-6 border-b-2 font-medium text-lg ${
+            activeTab === 'visaServices' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Visa-Dienste
+        </button>
       </div>
+
+      {/* Content based on active tab */}
+      {activeTab === 'dashboard' && renderDashboardTab()}
+      {activeTab === 'users' && renderUsersTab()}
+      {activeTab === 'schools' && renderSchoolsTab()}
+      {activeTab === 'courses' && renderCoursesTab()}
+      {activeTab === 'visaServices' && renderVisaServicesTab()}
     </div>
   )
 }

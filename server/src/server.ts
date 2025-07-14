@@ -15,6 +15,7 @@ import bookingRoutes from './routes/bookings';
 import paymentRoutes from './routes/payments';
 import visaRoutes from './routes/visa';
 import adminRoutes from './routes/admin';
+import reviewsRoutes from './routes/reviews';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -58,7 +59,7 @@ app.use(cors({
     ? ['https://ku19mpyoa0.space.minimax.io'] 
     : true, // Allow all origins in development
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
@@ -88,6 +89,7 @@ app.use('/api/courses', courseRoutes);
 app.use('/api/tutors', tutorRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/payments', authenticateToken, paymentRoutes);
+app.use('/api/reviews', reviewsRoutes);
 app.use('/api/visa', visaRoutes);
 app.use('/api/admin', authenticateToken, adminRoutes);
 

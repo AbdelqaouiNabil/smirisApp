@@ -4,11 +4,12 @@ import { ErrorBoundary } from './components/ErrorBoundary.tsx'
 import './index.css'
 import './i18n'
 import MVPApp from './MVPApp.tsx'
+import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
-      <MVPApp />
+      <App />
     </ErrorBoundary>
   </StrictMode>,
 )

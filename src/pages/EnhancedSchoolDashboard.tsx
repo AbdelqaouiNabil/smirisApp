@@ -54,6 +54,7 @@ import {
   Building,
   User
 } from 'lucide-react'
+import { API_BASE_URL } from '../lib/api';
 
 // Interfaces
 interface SchoolStats {
@@ -144,6 +145,8 @@ interface Review {
   helpful: number
   response?: string
   responseDate?: string
+  reviewer_name?: string;
+  created_at?: string;
 }
 
 interface CalendarEvent {
@@ -274,138 +277,30 @@ const EnhancedSchoolDashboard = () => {
 
   // Simulated data loading
   useEffect(() => {
-    loadDashboardData()
-  }, [])
+    loadDashboardData();
+  }, [user]);
 
   const loadDashboardData = async () => {
     try {
-      // Simulate API calls
-      const mockStats: SchoolStats = {
-        totalCourses: 24,
-        activeCourses: 18,
-        totalStudents: 156,
-        monthlyBookings: 32,
-        monthlyRevenue: 15750,
-        yearlyRevenue: 189000,
-        averageRating: 4.8,
-        pendingRequests: 5,
-        completedCourses: 45,
-        conversionRate: 87.5,
-        popularCourse: 'Business Deutsch B2',
-        recentBookings: 8,
-        cancelledBookings: 2,
-        refundRate: 3.2
+      const schoolId = user?.schoolId;
+      if (!schoolId) {
+        toast({ title: "Fehler", description: "Keine Schul-ID gefunden.", variant: "destructive" });
+        return;
       }
-
-      const mockCourses: Course[] = [
-        {
-          id: 1,
-          title: 'Business Deutsch B2',
-          level: 'B2',
-          price: 899,
-          duration: '8 Wochen',
-          maxStudents: 15,
-          currentStudents: 12,
-          status: 'active',
-          startDate: '2025-07-01',
-          endDate: '2025-08-26',
-          schedule: 'Mo-Fr 09:00-11:00',
-          description: 'Professionelles Business Deutsch für den Arbeitsplatz',
-          category: 'Business',
-          location: 'Hybrid',
-          instructor: 'Prof. Maria Schmidt',
-          materials: ['Kursbuch', 'Arbeitsbuch', 'Online Portal'],
-          requirements: 'B1 Zertifikat erforderlich',
-          objectives: ['Geschäftskommunikation', 'Präsentationen', 'Verhandlungen'],
-          image: '/images/course-business.jpg',
-          createdAt: '2025-06-01',
-          updatedAt: '2025-06-15'
-        },
-        {
-          id: 2,
-          title: 'Deutsch A1 Anfänger',
-          level: 'A1',
-          price: 599,
-          duration: '6 Wochen',
-          maxStudents: 20,
-          currentStudents: 18,
-          status: 'active',
-          startDate: '2025-07-15',
-          endDate: '2025-08-26',
-          schedule: 'Mo-Mi-Fr 18:00-20:00',
-          description: 'Perfekter Einstieg in die deutsche Sprache',
-          category: 'General',
-          location: 'In-Person',
-          instructor: 'Thomas Müller',
-          materials: ['Netzwerk A1', 'Audio-CDs', 'App-Zugang'],
-          requirements: 'Keine Vorkenntnisse',
-          objectives: ['Grundwortschatz', 'Erste Gespräche', 'Alphabet & Zahlen'],
-          image: '/images/course-a1.jpg',
-          createdAt: '2025-05-15',
-          updatedAt: '2025-06-10'
-        }
-      ]
-
-      const mockBookings: Booking[] = [
-        {
-          id: 1,
-          courseId: 1,
-          courseName: 'Business Deutsch B2',
-          studentName: 'Ahmed Hassan',
-          studentEmail: 'ahmed@email.com',
-          studentPhone: '+212-6-12345678',
-          bookingDate: '2025-06-20',
-          startDate: '2025-07-01',
-          status: 'confirmed',
-          paymentStatus: 'paid',
-          amount: 899,
-          paymentMethod: 'stripe',
-          notes: 'Möchte vor Kursbeginn ein Beratungsgespräch'
-        },
-        {
-          id: 2,
-          courseId: 2,
-          courseName: 'Deutsch A1 Anfänger',
-          studentName: 'Fatima Benali',
-          studentEmail: 'fatima@email.com',
-          studentPhone: '+212-6-87654321',
-          bookingDate: '2025-06-21',
-          startDate: '2025-07-15',
-          status: 'pending',
-          paymentStatus: 'pending',
-          amount: 599,
-          paymentMethod: 'paypal',
-          notes: 'Wartet auf Zahlungsbestätigung'
-        }
-      ]
-
-      setStats(mockStats)
-      setCourses(mockCourses)
-      setBookings(mockBookings)
-      
-      // Generate calendar events from courses
-      const events: CalendarEvent[] = mockCourses.map(course => ({
-        id: course.id,
-        title: course.title,
-        start: new Date(course.startDate),
-        end: new Date(course.endDate),
-        resource: {
-          type: 'course',
-          courseId: course.id,
-          status: course.status,
-          students: course.currentStudents
-        }
-      }))
-      setCalendarEvents(events)
-
+      const res = await fetch(`${API_BASE_URL.replace('/api', '')}/api/schools/${schoolId}`);
+      const data = await res.json();
+      setSchoolInfo(data.school);
+      setCourses(data.courses || []);
+      setReviews(data.reviews || []);
+      // Optionally set other state (stats, bookings, etc.)
     } catch (error) {
       toast({
         title: "Fehler beim Laden",
         description: "Dashboard-Daten konnten nicht geladen werden",
         variant: "destructive"
-      })
+      });
     }
-  }
+  };
 
   const renderOverview = () => (
     <div className="space-y-8">
@@ -529,38 +424,28 @@ const EnhancedSchoolDashboard = () => {
           Letzte Aktivitäten
         </h3>
         <div className="space-y-4">
-          <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-            <div className="bg-green-100 p-2 rounded-lg">
-              <UserCheck className="text-green-600" size={16} />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium">Neue Buchung erhalten</p>
-              <p className="text-xs text-gray-500">Ahmed Hassan hat sich für Business Deutsch B2 angemeldet</p>
-            </div>
-            <span className="text-xs text-gray-400">vor 2 Std.</span>
-          </div>
-          
-          <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-            <div className="bg-blue-100 p-2 rounded-lg">
-              <Star className="text-blue-600" size={16} />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium">Neue 5-Sterne Bewertung</p>
-              <p className="text-xs text-gray-500">Fatima Benali hat Ihren A2 Kurs bewertet</p>
-            </div>
-            <span className="text-xs text-gray-400">vor 5 Std.</span>
-          </div>
-          
-          <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-            <div className="bg-yellow-100 p-2 rounded-lg">
-              <AlertCircle className="text-yellow-600" size={16} />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium">Kurs fast ausgebucht</p>
-              <p className="text-xs text-gray-500">Deutsch A1 Anfänger hat nur noch 2 freie Plätze</p>
-            </div>
-            <span className="text-xs text-gray-400">vor 1 Tag</span>
-          </div>
+          {reviews.length === 0 ? (
+            <div className="text-gray-500 text-sm">Noch keine Bewertungen vorhanden.</div>
+          ) : (
+            reviews.map((review, idx) => (
+              <div key={idx} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+                <div className="bg-blue-100 p-2 rounded-lg">
+                  <Star className="text-blue-600" size={16} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">
+                    Neue {review.rating}-Sterne Bewertung
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {review.reviewer_name || review.studentName} hat Ihren Kurs {review.courseName || ''} bewertet
+                  </p>
+                </div>
+                <span className="text-xs text-gray-400">
+                  {new Date(review.created_at || review.date).toLocaleDateString()}
+                </span>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

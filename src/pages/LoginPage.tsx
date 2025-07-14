@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react'
@@ -15,8 +15,10 @@ export default function LoginPage() {
   })
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  // Add a state to track if we should redirect after login
+  const [shouldRedirect, setShouldRedirect] = useState(false);
   
-  const { login, register } = useAuth()
+  const { login, register, user } = useAuth()
   const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -30,19 +32,7 @@ export default function LoginPage() {
       if (isLogin) {
         success = await login(formData.email, formData.password)
         if (success) {
-          // Get user role from the correct localStorage key
-          const userData = JSON.parse(localStorage.getItem('germansphere_user') || '{}');
-          if (userData.role === 'tutor') {
-            navigate('/tutor-dashboard')
-          } else if (userData.role === 'school') {
-            navigate('/school-dashboard')
-          } else if (userData.role === 'admin') {
-            navigate('/admin')
-          } else if (userData.role === 'student') {
-            navigate('/') // Redirect students to homepage to see courses
-          } else {
-            navigate('/') // Default to homepage for any other roles
-          }
+          setShouldRedirect(true);
         } else {
           setError('Ungültige Anmeldedaten')
         }
@@ -188,6 +178,24 @@ export default function LoginPage() {
     }
   }
 
+  // Add useEffect to handle redirect after user is set
+  useEffect(() => {
+    if (shouldRedirect && user) {
+      if (user.role === 'tutor') {
+        navigate('/tutor-dashboard');
+      } else if (user.role === 'school') {
+        navigate('/school-dashboard');
+      } else if (user.role === 'admin') {
+        navigate('/admin');
+      } else if (user.role === 'student') {
+        navigate('/');
+      } else {
+        navigate('/');
+      }
+      setShouldRedirect(false);
+    }
+  }, [shouldRedirect, user, navigate]);
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -325,7 +333,6 @@ export default function LoginPage() {
                     <option value="student">Student/in</option>
                     <option value="tutor">Sprachlehrer/in (erweiterte Registrierung)</option>
                     <option value="school">Sprachschule</option>
-                    <option value="admin">Administrator/in</option>
                   </select>
                 </div>
                 {formData.role === 'tutor' && (

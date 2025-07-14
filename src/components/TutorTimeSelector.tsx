@@ -110,7 +110,7 @@ export const TutorTimeSelector: React.FC<TutorTimeSelectorProps> = ({
     const dayName = DAYS_MAP[dayOfWeek as keyof typeof DAYS_MAP]
     
     // Get the day's schedule
-    const daySchedule = availability.weeklySchedule[dayName]
+    const daySchedule = availability?.weeklySchedule?.[dayName]
     
     if (daySchedule && daySchedule.enabled && daySchedule.timeSlots) {
       // Filter only available time slots and ensure proper time format

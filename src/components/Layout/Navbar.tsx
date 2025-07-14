@@ -204,6 +204,16 @@ export default function Navbar() {
                           </Link>
                         </>
                       )}
+                      {user.role === 'student' && (
+                        <Link
+                          to="/student-tutor-dashboard"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"
+                        >
+                          <User className="w-4 h-4 mr-3 text-gray-500" />
+                          Meine Tutoren
+                        </Link>
+                      )}
                       
                       {/* Common Menu Items */}
                       <Link
@@ -325,6 +335,16 @@ export default function Navbar() {
                     <User size={16} />
                     <span>{t('dashboard')}</span>
                   </Link>
+                  {user.role === 'student' && (
+                    <Link
+                      to="/student-tutor-dashboard"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex items-center space-x-2 text-gray-700 hover:text-blue-700 block px-3 py-2 rounded-md text-base font-medium"
+                    >
+                      <User size={16} />
+                      <span>Meine Tutoren</span>
+                    </Link>
+                  )}
                   <button
                     onClick={() => {
                       handleLogout()
