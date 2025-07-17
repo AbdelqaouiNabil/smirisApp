@@ -12,6 +12,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { tutorsApi, coursesApi, bookingsApi } from '../lib/api'
 import React from 'react'
 import { TutorAvailability } from '../components/TutorAvailability'
+import { useNavigate } from 'react-router-dom';
 
 moment.locale('de')
 const localizer = momentLocalizer(moment)
@@ -72,6 +73,7 @@ interface Review {
 export default function TutorDashboard() {
   const { toast } = useToast()
   const { user } = useAuth()
+  const navigate = useNavigate();
   
   const [activeTab, setActiveTab] = useState('overview')
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -108,6 +110,7 @@ export default function TutorDashboard() {
   const [formError, setFormError] = useState<string | null>(null);
 
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [isVerified, setIsVerified] = useState(true); // Assume true by default
 
   const handleCourseInput = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -187,6 +190,10 @@ export default function TutorDashboard() {
       // Fetch real tutor data from backend
       const response = await tutorsApi.getByUserId(user.id)
       const tutor = response.tutor
+      console.log('Tutor data:', tutor);
+      console.log('is_verified value:', tutor.is_verified);
+      console.log('is_verified type:', typeof tutor.is_verified);
+      setIsVerified(!!tutor.is_verified);
       // Fetch reviews for this tutor
       const tutorDetails = await tutorsApi.getById(tutor.id);
       setReviews(tutorDetails.reviews || []);
@@ -298,7 +305,8 @@ export default function TutorDashboard() {
         <div className="grid md:grid-cols-3 gap-4">
           <button
             onClick={() => setShowCourseModal(true)}
-            className="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white p-4 rounded-xl hover:shadow-lg transition-all flex items-center"
+            className={`bg-gradient-to-r from-emerald-600 to-emerald-700 text-white p-4 rounded-xl hover:shadow-lg transition-all flex items-center ${!isVerified ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={!isVerified}
           >
             <Plus className="mr-3" size={20} />
             Neues Kursangebot
@@ -371,6 +379,22 @@ export default function TutorDashboard() {
         )}
       </div>
 
+      {/* Profilstatus */}
+      <div className="bg-white rounded-xl shadow-md p-6">
+        <h3 className="text-xl font-bold text-gray-900 mb-6">Profilstatus</h3>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-gray-700 mb-2">Ihr Profil ist noch nicht vollständig.</div>
+            <button
+              className="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all"
+              onClick={() => navigate('/tutor-profile-complete')}
+            >
+              Profil vervollständigen
+            </button>
+          </div>
+        </div>
+      </div>
+
     </div>
   )
 
@@ -431,9 +455,22 @@ export default function TutorDashboard() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex space-x-2">
-                      <button className="text-emerald-600 hover:text-emerald-900">
-                        <Eye size={16} />
-                      </button>
+                      {booking.status !== 'abgeschlossen' && (
+                        <button
+                          className="text-emerald-600 hover:text-emerald-900"
+                          onClick={async () => {
+                            try {
+                              await bookingsApi.updateStatus(booking.id, 'completed');
+                              toast({ title: 'Buchung als abgeschlossen markiert', variant: 'default' });
+                              loadData();
+                            } catch (error: any) {
+                              toast({ title: 'Fehler beim Abschließen der Buchung', description: error.message, variant: 'destructive' });
+                            }
+                          }}
+                        >
+                          <Eye size={16} />
+                        </button>
+                      )}
                       <button className="text-blue-600 hover:text-blue-900">
                         <MessageCircle size={16} />
                       </button>
@@ -450,11 +487,21 @@ export default function TutorDashboard() {
 
   const renderCourses = () => (
     <div className="space-y-6">
+      {!isVerified && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4 rounded mb-4 flex items-center">
+          <AlertCircle className="mr-2 text-yellow-600" size={24} />
+          <div>
+            <div className="font-semibold">Ihr Profil ist noch nicht verifiziert.</div>
+            <div>Sie können erst Kurse erstellen und veröffentlichen, wenn Ihr Profil von einem Administrator überprüft und freigeschaltet wurde.</div>
+          </div>
+        </div>
+      )}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-900">Meine Kursangebote</h2>
         <button
           onClick={() => setShowCourseModal(true)}
-          className="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all flex items-center"
+          className={`bg-gradient-to-r from-emerald-600 to-emerald-700 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all flex items-center ${!isVerified ? 'opacity-50 cursor-not-allowed' : ''}`}
+          disabled={!isVerified}
         >
           <Plus className="mr-2" size={20} />
           Neues Angebot
@@ -588,6 +635,16 @@ export default function TutorDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-emerald-50 py-8 px-4">
+      {/* Global Unverified Banner */}
+      {!isVerified && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4 rounded mb-6 flex items-center">
+          <AlertCircle className="mr-2 text-yellow-600" size={24} />
+          <div>
+            <div className="font-semibold">Ihr Profil ist noch nicht verifiziert.</div>
+            <div>Sie können erst Kurse erstellen und veröffentlichen, wenn Ihr Profil von einem Administrator überprüft und freigeschaltet wurde.</div>
+          </div>
+        </div>
+      )}
       {/* Course Creation Modal */}
       {showCourseModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">

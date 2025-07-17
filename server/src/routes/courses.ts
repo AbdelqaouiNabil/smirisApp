@@ -285,11 +285,17 @@ router.post('/tutor', [
   } = req.body;
 
   // Find the tutor's ID for the logged-in user
-  const tutorResult = await query('SELECT id FROM tutors WHERE user_id = $1', [req.user!.id]);
+  const tutorResult = await query('SELECT id, is_verified FROM tutors WHERE user_id = $1', [req.user!.id]);
   if (tutorResult.rows.length === 0) {
     throw new AppError('Tutor-Profil nicht gefunden', 404);
   }
-  const tutorId = tutorResult.rows[0].id;
+  const tutor = tutorResult.rows[0];
+
+  // Check if tutor is verified
+  if (!tutor.is_verified) {
+    throw new AppError('Sie müssen verifiziert werden, bevor Sie Kurse erstellen können. Bitte vervollständigen Sie Ihr Profil und warten Sie auf die Verifizierung.', 403);
+  }
+  const tutorId = tutor.id;
 
   // Insert new course for this tutor
   const result = await query(

@@ -592,7 +592,7 @@ export default function StudentTutorDashboard() {
                 } flex items-center whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
               >
                 <User className="w-4 h-4 mr-2" />
-                Meine kures
+                Meine tutor
               </button>
               <button
                 onClick={() => setActiveTab('courses')}

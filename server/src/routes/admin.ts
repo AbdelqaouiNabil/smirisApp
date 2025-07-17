@@ -521,4 +521,44 @@ router.post('/notifications', [
   });
 }));
 
+// Get all tutors for admin panel
+router.get('/tutors', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+  const result = await query(`
+    SELECT 
+      t.id, u.name, u.email, u.created_at, u.last_login, u.is_active, u.location,
+      t.is_verified, t.experience_years, t.hourly_rate, t.specializations, t.languages,
+      t.total_students, t.rating
+    FROM tutors t
+    JOIN users u ON t.user_id = u.id
+    ORDER BY u.created_at DESC
+  `);
+  res.json({ tutors: result.rows });
+}));
+
+// Verify or unverify a tutor (admin only)
+router.patch('/tutors/:id/verify', requireAdmin, [
+  body('is_verified').isBoolean().withMessage('is_verified must be a boolean'),
+], asyncHandler(async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw validationError('Invalid input');
+  }
+  const tutorId = parseInt(req.params.id);
+  if (isNaN(tutorId)) {
+    throw validationError('Invalid tutor ID');
+  }
+  const { is_verified } = req.body;
+  const result = await query(
+    'UPDATE tutors SET is_verified = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id, is_verified',
+    [is_verified, tutorId]
+  );
+  if (result.rows.length === 0) {
+    throw new AppError('Tutor not found', 404);
+  }
+  res.json({
+    message: `Tutor verification status updated`,
+    tutor: result.rows[0]
+  });
+}));
+
 export default router;

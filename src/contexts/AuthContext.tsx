@@ -77,16 +77,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check for existing authentication token
     const checkAuth = async () => {
       const token = localStorage.getItem('auth_token')
+      console.log('Checking auth on page load, token exists:', !!token)
       if (token) {
         try {
           authApi.setToken(token)
+          console.log('Calling /auth/profile to validate token...')
           const response = await authApi.me() as any
+          console.log('Profile response:', response)
           setUser(response.user || response)
+          console.log('User set successfully')
         } catch (error) {
+          console.error('Token validation failed:', error)
           // Token is invalid, remove it
           localStorage.removeItem('auth_token')
           localStorage.removeItem('germansphere_user')
           authApi.setToken(null)
+          console.log('Token removed from localStorage')
         }
       }
       setIsLoading(false)

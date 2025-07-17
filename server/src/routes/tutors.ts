@@ -6,22 +6,53 @@ import { asyncHandler, AppError, validationError } from '../middleware/errorHand
 import bcrypt from 'bcryptjs';
 import { generateToken } from '../middleware/auth';
 import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 
-const upload = multer({ dest: 'uploads/' });
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, '../../uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow images and PDFs
+    if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only images and PDF files are allowed'));
+    }
+  }
+});
 
 const router = express.Router();
+
+// Minimal test route to check if requests reach this router
+router.post('/test-upload', (req, res) => {
+  res.status(200).json({ message: 'Test route hit', headers: req.headers });
+});
 
 // Tutor Registration (creates both user and tutor profile)
 router.post(
   '/register',
-  upload.fields([
-    { name: 'photo', maxCount: 1 },
-    { name: 'cv', maxCount: 1 },
-    { name: 'certificates', maxCount: 10 }
-  ]),
-  // Removed express-validator array and boolean checks for multipart fields
   asyncHandler(async (req: Request, res: Response) => {
-    // Parse JSON fields sent as strings
+    // Parse JSON fields sent as strings (no file uploads)
     let specializations, languages, qualifications, preparesForExams, availableFormats;
     try {
       specializations = JSON.parse(req.body.specializations || '[]');
@@ -78,19 +109,12 @@ router.post(
     if (teachingPhilosophy && teachingPhilosophy.length > 1000) {
       throw new AppError('Lehrphilosophie zu lang', 400);
     }
-    if (termsAccepted !== 'true') {
+    if (termsAccepted !== 'true' && termsAccepted !== true && termsAccepted !== 'on') {
       throw new AppError('Bedingungen müssen akzeptiert werden', 400);
     }
-    if (dataProcessingAccepted !== 'true') {
+    if (dataProcessingAccepted !== 'true' && dataProcessingAccepted !== true && dataProcessingAccepted !== 'on') {
       throw new AppError('Datenverarbeitung muss akzeptiert werden', 400);
     }
-
-    // Handle uploaded files
-    const files = req.files as Record<string, Express.Multer.File[]>;
-    
-    const photo = files?.photo?.[0] || null;
-    const cv = files?.cv?.[0] || null;
-    const certificates = files?.certificates || [];
 
     // Check if email already exists
     const existingUser = await query('SELECT id FROM users WHERE email = $1', [email]);
@@ -98,10 +122,16 @@ router.post(
       throw new AppError('E-Mail-Adresse ist bereits registriert', 409);
     }
 
-    // Generate a random password for the user
-    const randomPassword = Math.random().toString(36).slice(-8);
+    // Accept password from frontend if provided
+    let password = req.body.password;
+    let randomPasswordGenerated = false;
+    if (!password || password.length < 6) {
+      // Generate a random password if not provided or too short
+      password = Math.random().toString(36).slice(-8);
+      randomPasswordGenerated = true;
+    }
     const saltRounds = 12;
-    const passwordHash = await bcrypt.hash(randomPassword, saltRounds);
+    const passwordHash = await bcrypt.hash(password, saltRounds);
 
     // Create user
     const fullName = `${firstName} ${lastName}`;
@@ -115,31 +145,31 @@ router.post(
     const user = userResult.rows[0];
 
     // Save all certificate file paths as an array
-    const certificatePaths = certificates.map(file => file.path);
+    const certificatePaths: string[] = []; // No file paths to save here
 
     // Create tutor profile
     const tutorResult = await query(
       `INSERT INTO tutors (
         user_id, bio, experience_years, hourly_rate, currency, specializations,
-        languages, certifications, availability, is_verified, is_available, photo_path, cv_url
+        languages, certifications, availability, is_verified, is_available, profile_photo, cv_file_path
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING id, user_id, bio, experience_years, hourly_rate, specializations,
                 languages, certifications, rating, review_count, total_students,
-                total_hours, availability, is_verified, created_at, photo_path, cv_url`,
+                total_hours, availability, is_verified, created_at, profile_photo, cv_file_path`,
       [
         user.id,
         teachingPhilosophy || '',
         teachingExperience,
         hourlyRate,
         'EUR',
-        specializations,
-        languages,
-        JSON.stringify(certificatePaths),
+        specializations, // pass as array
+        languages,       // pass as array
+        qualifications,  // pass as array (for certifications)
         JSON.stringify({ formats: availableFormats, maxStudents: maxStudentsPerGroup, examPrep: preparesForExams }),
         false, // Not verified initially
         true,  // Available for bookings
-        photo ? photo.path : null,
-        cv ? cv.path : null
+        null, // No profile photo
+        null // No cv file path
       ]
     );
 
@@ -170,7 +200,8 @@ router.post(
         role: user.role
       },
       token,
-      temporaryPassword: randomPassword // Send this to the user via email in production
+      // Only return the password if it was randomly generated
+      temporaryPassword: randomPasswordGenerated ? password : undefined
     });
   })
 );
@@ -270,65 +301,13 @@ router.get('/', [
   });
 }));
 
-// Einzelnen Tutor abrufen
-router.get('/:id', optionalAuth, asyncHandler(async (req: Request, res: Response) => {
+// Get tutor by tutor table ID
+router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
   const tutorId = parseInt(req.params.id);
-  if (isNaN(tutorId)) {
-    throw validationError('Ungültige Tutor-ID');
-  }
-
-  const result = await query(
-    `SELECT 
-      t.*, 
-      u.name, u.email, u.avatar_url, u.location, u.created_at as user_created_at
-     FROM tutors t
-     JOIN users u ON t.user_id = u.id
-     WHERE t.id = $1 AND u.is_active = TRUE AND t.is_available = TRUE`,
-    [tutorId]
-  );
-
-  if (result.rows.length === 0) {
-    throw new AppError('Tutor nicht gefunden', 404);
-  }
-
-  const tutor = result.rows[0];
-
-  // Bewertungen abrufen
-  const reviewsResult = await query(
-    `SELECT r.rating, r.title, r.comment, r.created_at, u.name as reviewer_name
-     FROM reviews r
-     JOIN users u ON r.user_id = u.id
-     WHERE r.tutor_id = $1 AND r.is_public = TRUE
-     ORDER BY r.created_at DESC
-     LIMIT 10`,
-    [tutorId]
-  );
-
-  // Verfügbarkeit für die nächsten 7 Tage
-  const availabilityResult = await query(
-    `SELECT start_date, time_slot
-     FROM bookings 
-     WHERE tutor_id = $1 AND status = 'confirmed' 
-       AND start_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days'
-     ORDER BY start_date, time_slot`,
-    [tutorId]
-  );
-
-  // Fetch tutor's courses
-  const coursesResult = await query(
-    'SELECT * FROM courses WHERE tutor_id = $1',
-    [tutorId]
-  );
-
-  res.json({
-    tutor: {
-      ...tutor,
-      availability: tutor.availability || null
-    },
-    courses: coursesResult.rows,
-    reviews: reviewsResult.rows,
-    bookedSlots: availabilityResult.rows
-  });
+  if (isNaN(tutorId)) throw validationError('Ungültige Tutor-ID');
+  const result = await query('SELECT * FROM tutors WHERE id = $1', [tutorId]);
+  if (result.rows.length === 0) throw new AppError('Tutor nicht gefunden', 404);
+  res.json({ tutor: result.rows[0] });
 }));
 
 // Tutor-Profil erstellen
@@ -725,5 +704,97 @@ router.get('/me/availability', [
     availability: result.rows[0].availability
   });
 }));
+
+// Create a separate router for profile documents upload
+export const profileDocumentsRouter = express.Router();
+
+profileDocumentsRouter.post(
+  '/profile-documents',
+  authenticateToken,
+  (req, res, next) => {
+    console.log('Starting file upload...');
+    console.log('Request content-type:', req.headers['content-type']);
+    upload.fields([
+      { name: 'photo', maxCount: 1 },
+      { name: 'cv', maxCount: 1 },
+      { name: 'certificates', maxCount: 10 }
+    ])(req, res, (err) => {
+      if (err instanceof multer.MulterError) {
+        console.error('Multer error:', err);
+        return res.status(400).json({ error: 'File upload error: ' + err.message });
+      } else if (err) {
+        console.error('Upload error:', err);
+        return res.status(400).json({ error: 'Upload error: ' + err.message });
+      }
+      console.log('Multer processing completed successfully');
+      console.log('Files after multer:', req.files);
+      next();
+    });
+  },
+  asyncHandler(async (req: Request, res: Response) => {
+    // Use req.user!.id as the tutorId
+    const userId = req.user!.id;
+    const files = req.files as Record<string, Express.Multer.File[]>;
+    
+    console.log('=== DETAILED FILE ANALYSIS ===');
+    console.log('Files received:', files);
+    console.log('User ID:', userId);
+    
+    // Check each field specifically
+    console.log('Photo field:', files?.photo);
+    console.log('CV field:', files?.cv);
+    console.log('Certificates field:', files?.certificates);
+    
+    const photo = files?.photo?.[0]?.path || null;
+    const cv = files?.cv?.[0]?.path || null;
+    const certificates = (files?.certificates || []).map(f => f.path);
+    
+    console.log('Extracted photo path:', photo);
+    console.log('Extracted CV path:', cv);
+    console.log('Extracted certificate paths:', certificates);
+    
+    // Check if files actually exist on disk
+    if (photo && fs.existsSync(photo)) {
+      console.log('✅ Photo file exists on disk:', photo);
+    } else {
+      console.log('❌ Photo file does not exist on disk:', photo);
+    }
+    
+    if (cv && fs.existsSync(cv)) {
+      console.log('✅ CV file exists on disk:', cv);
+    } else {
+      console.log('❌ CV file does not exist on disk:', cv);
+    }
+    
+    certificates.forEach((cert, index) => {
+      if (fs.existsSync(cert)) {
+        console.log(`✅ Certificate ${index} exists on disk:`, cert);
+      } else {
+        console.log(`❌ Certificate ${index} does not exist on disk:`, cert);
+      }
+    });
+    
+    // Check if tutor record exists
+    const tutorCheck = await query('SELECT id FROM tutors WHERE user_id = $1', [userId]);
+    if (tutorCheck.rows.length === 0) {
+      throw new AppError('Tutor record not found for this user', 404);
+    }
+    
+    const updateResult = await query(
+      'UPDATE tutors SET profile_photo = $1, cv_file_path = $2, certificate_files = $3 WHERE user_id = $4 RETURNING id',
+      [photo, cv, JSON.stringify(certificates), userId]
+    );
+    
+    console.log('Database update result:', updateResult.rows);
+    
+    res.status(200).json({ 
+      message: 'Profil-Dokumente erfolgreich hochgeladen', 
+      photo, 
+      cv, 
+      certificates,
+      tutorId: updateResult.rows[0]?.id 
+    });
+  })
+);
 
 export default router;

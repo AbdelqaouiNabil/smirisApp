@@ -60,17 +60,27 @@ export const errorHandler = (
     message = 'Eingabedaten sind ungültig';
   }
 
+  // Log all errors for debugging
+  console.error('Error:', {
+    message: error.message,
+    stack: error.stack,
+    url: req.url,
+    method: req.method,
+    body: req.body,
+    user: req.user
+  });
+
   // Log error (außer bei 4xx Client-Fehlern)
-  if (statusCode >= 500) {
-    console.error('Server Error:', {
-      message: error.message,
-      stack: error.stack,
-      url: req.url,
-      method: req.method,
-      body: req.body,
-      user: req.user
-    });
-  }
+  // if (statusCode >= 500) {
+  //   console.error('Server Error:', {
+  //     message: error.message,
+  //     stack: error.stack,
+  //     url: req.url,
+  //     method: req.method,
+  //     body: req.body,
+  //     user: req.user
+  //   });
+  // }
 
   // Response senden
   res.status(statusCode).json({

@@ -15,6 +15,7 @@ interface TutorRegistrationData {
   email: string
   phone: string
   city: string
+  password: string // <-- Add password field
   
   // Professional Info
   qualifications: string[]
@@ -29,14 +30,16 @@ interface TutorRegistrationData {
   preparesForExams: string[]
   teachingPhilosophy: string
   
-  // Documents
-  cv: File | null
-  certificates: File[]
-  photo: File | null
-  
   // Agreements
   termsAccepted: boolean
   dataProcessingAccepted: boolean
+}
+
+interface TutorRegisterResponse {
+  tutor: any;
+  user: any;
+  token?: string;
+  temporaryPassword?: string;
 }
 
 export default function TutorRegistrationPage() {
@@ -51,6 +54,7 @@ export default function TutorRegistrationPage() {
     email: '',
     phone: '',
     city: '',
+    password: '', // <-- Initialize password
     qualifications: [],
     teachingExperience: 0,
     specializations: [],
@@ -60,20 +64,17 @@ export default function TutorRegistrationPage() {
     maxStudentsPerGroup: 4,
     preparesForExams: [],
     teachingPhilosophy: '',
-    cv: null,
-    certificates: [],
-    photo: null,
     termsAccepted: false,
     dataProcessingAccepted: false
   })
+  const [passwordError, setPasswordError] = useState<string | null>(null)
 
   const steps = [
     { id: 1, title: 'Persönliche Daten', icon: User },
     { id: 2, title: 'Qualifikationen', icon: Award },
     { id: 3, title: 'Unterrichtsstil', icon: BookOpen },
     { id: 4, title: 'Prüfungsvorbereitung', icon: GraduationCap },
-    { id: 5, title: 'Dokumente', icon: Upload },
-    { id: 6, title: 'Bestätigung', icon: CheckCircle }
+    { id: 5, title: 'Bestätigung', icon: CheckCircle }
   ]
 
   const qualificationOptions = [
@@ -137,26 +138,6 @@ export default function TutorRegistrationPage() {
   }
 
   const nextStep = () => {
-    // Validate required documents on step 5
-    if (currentStep === 5) {
-      if (!formData.photo) {
-        toast({
-          title: "Fehler",
-          description: "Bitte laden Sie ein Profilfoto hoch.",
-          variant: "destructive"
-        })
-        return
-      }
-      if (!formData.cv) {
-        toast({
-          title: "Fehler",
-          description: "Bitte laden Sie Ihren Lebenslauf hoch.",
-          variant: "destructive"
-        })
-        return
-      }
-    }
-    
     if (currentStep < steps.length) {
       setCurrentStep(currentStep + 1)
     }
@@ -177,44 +158,42 @@ export default function TutorRegistrationPage() {
       })
       return
     }
-
+    if (!formData.password || formData.password.length < 6) {
+      setPasswordError("Das Passwort muss mindestens 6 Zeichen lang sein.")
+      return
+    } else {
+      setPasswordError(null)
+    }
     setIsSubmitting(true)
     try {
-      const formDataToSend = new FormData()
-      formDataToSend.append('firstName', formData.firstName)
-      formDataToSend.append('lastName', formData.lastName)
-      formDataToSend.append('email', formData.email)
-      formDataToSend.append('phone', formData.phone)
-      formDataToSend.append('city', formData.city)
-      formDataToSend.append('qualifications', JSON.stringify(formData.qualifications))
-      formDataToSend.append('teachingExperience', String(formData.teachingExperience))
-      formDataToSend.append('specializations', JSON.stringify(formData.specializations))
-      formDataToSend.append('languages', JSON.stringify(formData.languages))
-      formDataToSend.append('hourlyRate', String(formData.hourlyRate))
-      formDataToSend.append('availableFormats', JSON.stringify(formData.availableFormats))
-      formDataToSend.append('maxStudentsPerGroup', String(formData.maxStudentsPerGroup))
-      formDataToSend.append('preparesForExams', JSON.stringify(formData.preparesForExams))
-      formDataToSend.append('teachingPhilosophy', formData.teachingPhilosophy)
-      formDataToSend.append('termsAccepted', String(formData.termsAccepted))
-      formDataToSend.append('dataProcessingAccepted', String(formData.dataProcessingAccepted))
+      const payload = {
+        ...formData,
+        qualifications: JSON.stringify(formData.qualifications),
+        specializations: JSON.stringify(formData.specializations),
+        languages: JSON.stringify(formData.languages),
+        availableFormats: JSON.stringify(formData.availableFormats),
+        preparesForExams: JSON.stringify(formData.preparesForExams),
+        termsAccepted: String(formData.termsAccepted),
+        dataProcessingAccepted: String(formData.dataProcessingAccepted)
+      }
+      // Get the response from the backend
+      const response: TutorRegisterResponse = await tutorsApi.registerTutor(payload);
 
-      if (formData.cv) {
-        formDataToSend.append('cv', formData.cv)
+      // Set token and user in localStorage and API client
+      if (response.token) {
+        localStorage.setItem('auth_token', response.token);
+        authApi.setToken(response.token);
       }
-      if (formData.photo) {
-        formDataToSend.append('photo', formData.photo)
-      }
-      if (formData.certificates.length > 0) {
-        formDataToSend.append('certificates', formData.certificates[0]) // Assuming only one certificate for now
+      if (response.user) {
+        localStorage.setItem('germansphere_user', JSON.stringify(response.user));
+        // Optionally, update your AuthContext user here if you expose a setUser function
       }
 
-      const response = await tutorsApi.registerTutor(formDataToSend)
-      
       toast({
         title: "Anmeldung erfolgreich!",
         description: "Ihre Anmeldung wurde eingereicht. Sie erhalten innerhalb von 24h eine Bestätigung.",
       })
-      
+
       navigate('/tutor-dashboard')
     } catch (error) {
       console.error("Registration failed:", error)
@@ -268,6 +247,20 @@ export default function TutorRegistrationPage() {
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 placeholder="ihre.email@beispiel.com"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Passwort *</label>
+              <input
+                type="password"
+                value={formData.password}
+                onChange={(e) => handleInputChange('password', e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="Mindestens 6 Zeichen"
+                minLength={6}
+                required
+              />
+              {passwordError && <p className="text-red-500 text-sm mt-1">{passwordError}</p>}
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
@@ -493,156 +486,6 @@ export default function TutorRegistrationPage() {
         )
 
       case 5:
-        return (
-          <div className="space-y-6">
-            <h3 className="text-2xl font-bold text-gray-900 mb-6">Dokumente hochladen</h3>
-            
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                formData.photo 
-                  ? 'border-emerald-400 bg-emerald-50' 
-                  : 'border-gray-300 bg-gray-50 hover:border-emerald-400'
-              }`}>
-                <Camera className={`mx-auto mb-4 ${formData.photo ? 'text-emerald-600' : 'text-gray-400'}`} size={48} />
-                <h4 className="font-semibold text-gray-700 mb-2">Profilfoto *</h4>
-                <p className="text-sm text-gray-500 mb-4">Professionelles Foto für Ihr Profil</p>
-                
-                {formData.photo && (
-                  <div className="mb-4">
-                    <img 
-                      src={URL.createObjectURL(formData.photo)} 
-                      alt="Preview" 
-                      className="w-20 h-20 rounded-full object-cover mx-auto border-2 border-emerald-200"
-                    />
-                    <p className="text-sm text-emerald-600 mt-2">{formData.photo.name}</p>
-                  </div>
-                )}
-                
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      console.log('Photo selected:', file.name, file.size);
-                      handleInputChange('photo', file);
-                    }
-                  }}
-                  className="hidden"
-                  id="photo-upload"
-                />
-                <label
-                  htmlFor="photo-upload"
-                  className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700 cursor-pointer transition-colors"
-                >
-                  {formData.photo ? 'Foto ändern' : 'Foto auswählen'}
-                </label>
-              </div>
-
-              <div className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                formData.cv 
-                  ? 'border-emerald-400 bg-emerald-50' 
-                  : 'border-gray-300 bg-gray-50 hover:border-emerald-400'
-              }`}>
-                <FileText className={`mx-auto mb-4 ${formData.cv ? 'text-emerald-600' : 'text-gray-400'}`} size={48} />
-                <h4 className="font-semibold text-gray-700 mb-2">Lebenslauf *</h4>
-                <p className="text-sm text-gray-500 mb-4">Aktueller Lebenslauf (PDF)</p>
-                
-                {formData.cv && (
-                  <div className="mb-4">
-                    <FileText className="text-emerald-600 mx-auto" size={32} />
-                    <p className="text-sm text-emerald-600 mt-2">{formData.cv.name}</p>
-                    <p className="text-xs text-gray-500">{(formData.cv.size / 1024 / 1024).toFixed(2)} MB</p>
-                  </div>
-                )}
-                
-                <input
-                  type="file"
-                  accept=".pdf,.doc,.docx"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      console.log('CV selected:', file.name, file.size);
-                      handleInputChange('cv', file);
-                    }
-                  }}
-                  className="hidden"
-                  id="cv-upload"
-                />
-                <label
-                  htmlFor="cv-upload"
-                  className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700 cursor-pointer transition-colors"
-                >
-                  {formData.cv ? 'CV ändern' : 'CV hochladen'}
-                </label>
-              </div>
-            </div>
-
-            <div className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-              formData.certificates.length > 0 
-                ? 'border-emerald-400 bg-emerald-50' 
-                : 'border-gray-300 bg-gray-50 hover:border-emerald-400'
-            }`}>
-              <Award className={`mx-auto mb-4 ${formData.certificates.length > 0 ? 'text-emerald-600' : 'text-gray-400'}`} size={48} />
-              <h4 className="font-semibold text-gray-700 mb-2">Zertifikate & Abschlüsse</h4>
-              <p className="text-sm text-gray-500 mb-4">DaF-Zertifikat, Universitätsdiplom, etc. (Optional)</p>
-              
-              {formData.certificates.length > 0 && (
-                <div className="mb-4">
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    {formData.certificates.map((file, index) => (
-                      <div key={index} className="bg-white p-2 rounded border">
-                        <FileText className="text-emerald-600" size={20} />
-                        <p className="text-xs text-emerald-600 mt-1">{file.name}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-sm text-emerald-600 mt-2">
-                    {formData.certificates.length} Zertifikat{formData.certificates.length !== 1 ? 'e' : ''} ausgewählt
-                  </p>
-                </div>
-              )}
-              
-              <input
-                type="file"
-                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                multiple
-                onChange={(e) => {
-                  const files = Array.from(e.target.files || []);
-                  if (files.length > 0) {
-                    console.log('Certificates selected:', files.map(f => f.name));
-                    handleInputChange('certificates', files);
-                  }
-                }}
-                className="hidden"
-                id="certificates-upload"
-              />
-              <label
-                htmlFor="certificates-upload"
-                className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700 cursor-pointer transition-colors"
-              >
-                {formData.certificates.length > 0 ? 'Weitere Zertifikate hinzufügen' : 'Zertifikate hochladen'}
-              </label>
-            </div>
-
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <p className="text-yellow-800 text-sm">
-                <strong>Hinweis:</strong> Alle Dokumente werden von unserem Team überprüft. 
-                Die Freischaltung erfolgt innerhalb von 24-48 Stunden.
-              </p>
-            </div>
-
-            {/* Debug information - remove in production */}
-            <div className="bg-gray-100 p-4 rounded-lg text-xs">
-              <p><strong>Debug Info:</strong></p>
-              <p>Photo: {formData.photo ? `${formData.photo.name} (${(formData.photo.size / 1024).toFixed(1)} KB)` : 'None'}</p>
-              <p>CV: {formData.cv ? `${formData.cv.name} (${(formData.cv.size / 1024).toFixed(1)} KB)` : 'None'}</p>
-              <p>Certificates: {formData.certificates.length} files</p>
-            </div>
-          </div>
-        )
-
-      case 6:
         return (
           <div className="space-y-6">
             <h3 className="text-2xl font-bold text-gray-900 mb-6">Bestätigung & Abschluss</h3>

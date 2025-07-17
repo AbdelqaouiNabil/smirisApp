@@ -87,7 +87,7 @@ export default function DashboardPage() {
     const loadDashboardData = async () => {
       try {
         const [bookingsRes, tutorsRes, courseBookingsRes] = await Promise.all([
-          bookingsApi.getAll(),
+                  bookingsApi.getAll(),
           tutorsApi.getAll(),
           user?.role === 'student' ? bookingsApi.getStudentCourses() : Promise.resolve({ courseBookings: [] })
         ])

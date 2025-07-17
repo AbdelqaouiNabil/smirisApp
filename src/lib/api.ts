@@ -216,8 +216,12 @@ class ApiClient {
     // Always get the latest token from localStorage
     const latestToken = localStorage.getItem('auth_token');
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
       ...((options.headers as Record<string, string>) || {})
+    }
+
+    // Only set Content-Type to application/json if not already set and not FormData
+    if (!headers['Content-Type'] && !(options.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
     }
 
     if (latestToken) {
@@ -263,6 +267,7 @@ class ApiClient {
   }
 
   async get<T>(endpoint: string, params?: Record<string, any>): Promise<T> {
+    console.log('API GET request:', endpoint, params); // Add this line for debugging
     const url = new URL(endpoint, this.baseURL)
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -280,14 +285,20 @@ class ApiClient {
       ...((customHeaders as Record<string, string>) || {})
     }
 
+    // Always get the latest token from localStorage
+    const latestToken = localStorage.getItem('auth_token');
+    if (latestToken) {
+      headers.Authorization = `Bearer ${latestToken}`;
+    }
+
     // Don't set Content-Type for FormData, let browser handle it
     if (!(data instanceof FormData)) {
-      headers['Content-Type'] = 'application/json'
+      headers['Content-Type'] = 'application/json';
     }
 
     return this.request<T>(endpoint, {
       method: 'POST',
-      body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined),
+      body: data instanceof FormData ? data : JSON.stringify(data),
       headers
     })
   }
@@ -331,8 +342,8 @@ export const authApi = {
     apiClient.post('/auth/logout'),
   
   me: () =>
-    apiClient.get('/auth/me'),
-
+    apiClient.get('/auth/profile'),
+  
   setToken: (token: string | null) => apiClient.setToken(token)
 }
 
@@ -411,8 +422,8 @@ export const tutorsApi = {
   getById: (id: number) =>
     apiClient.get<{ tutor: Tutor; reviews: any[]; bookedSlots: any[]; courses: Course[] }>(`/tutors/${id}`),
   
-  registerTutor: (formData: FormData) =>
-    apiClient.post<{ tutor: Tutor; user: any }>('/tutors/register', formData),
+  registerTutor: (data: any) =>
+    apiClient.post<{ tutor: Tutor; user: any }>('/tutors/register', data),
   
   createProfile: (data: Partial<Tutor>) =>
     apiClient.post<{ tutor: Tutor }>('/tutors/profile', data),
@@ -424,7 +435,10 @@ export const tutorsApi = {
     apiClient.put('/tutors/availability', data),
   
   getByUserId: (userId: number) =>
-    apiClient.get<{ tutor: Tutor }>(`/tutors/by-user/${userId}`)
+    apiClient.get<{ tutor: Tutor }>(`/tutors/by-user/${userId}`),
+  
+  uploadProfileDocuments: (formData: FormData) =>
+    apiClient.post<{ success: boolean; photo: string; cv: string; certificates: string[] }>('/tutors/profile-documents', formData)
 }
 
 export const visaApi = {

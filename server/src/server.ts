@@ -10,7 +10,7 @@ import path from 'path';
 import authRoutes from './routes/auth';
 import schoolRoutes from './routes/schools';
 import courseRoutes from './routes/courses';
-import tutorRoutes from './routes/tutors';
+import tutorRoutes, { profileDocumentsRouter } from './routes/tutors';
 import bookingRoutes from './routes/bookings';
 import paymentRoutes from './routes/payments';
 import visaRoutes from './routes/visa';
@@ -63,9 +63,18 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// Body parsing middleware
+// Serve uploaded files statically
+app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
+
+// Register the file upload route BEFORE body parsers
+app.use('/api/tutors', profileDocumentsRouter);
+
+// Body parsing middleware (for all other routes)
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Register the rest of the tutor routes
+app.use('/api/tutors', tutorRoutes);
 
 // Logging middleware
 app.use(morgan('combined'));
@@ -79,14 +88,10 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Serve uploaded files statically
-app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
-
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/schools', schoolRoutes);
 app.use('/api/courses', courseRoutes);
-app.use('/api/tutors', tutorRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/payments', authenticateToken, paymentRoutes);
 app.use('/api/reviews', reviewsRoutes);

@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { body, validationResult } from 'express-validator';
 import { query } from '../database/connection';
@@ -24,7 +24,7 @@ router.post('/register', [
     .optional()
     .isIn(['student', 'tutor', 'school'])
     .withMessage('Ungültige Rolle')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async (req: Request, res: Response) => {
   // Validierungsfehler prüfen
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -87,7 +87,7 @@ router.post('/login', [
   body('password')
     .notEmpty()
     .withMessage('Passwort erforderlich')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     throw validationError('Eingabedaten sind ungültig');
@@ -144,7 +144,7 @@ router.post('/login', [
 }));
 
 // Profil abrufen
-router.get('/profile', authenticateToken, asyncHandler(async (req, res) => {
+router.get('/profile', authenticateToken, asyncHandler(async (req: Request, res: Response) => {
   const result = await query(
     `SELECT id, uuid, name, email, role, phone, location, avatar_url, 
             language_preference, is_verified, created_at, last_login
@@ -182,7 +182,7 @@ router.put('/profile', [
     .optional()
     .isIn(['de', 'fr', 'ar'])
     .withMessage('Ungültige Sprachpräferenz')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     throw validationError('Eingabedaten sind ungültig');
@@ -238,7 +238,7 @@ router.put('/change-password', [
   body('newPassword')
     .isLength({ min: 6 })
     .withMessage('Neues Passwort muss mindestens 6 Zeichen lang sein')
-], asyncHandler(async (req, res) => {
+], asyncHandler(async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     throw validationError('Eingabedaten sind ungültig');
@@ -273,7 +273,7 @@ router.put('/change-password', [
 }));
 
 // Token erneuern
-router.post('/refresh-token', asyncHandler(async (req, res) => {
+router.post('/refresh-token', asyncHandler(async (req: Request, res: Response) => {
   const { refreshToken } = req.body;
 
   if (!refreshToken) {
@@ -289,7 +289,7 @@ router.post('/refresh-token', asyncHandler(async (req, res) => {
 }));
 
 // Logout (Token invalidieren - in echter App würde man eine Blacklist verwenden)
-router.post('/logout', authenticateToken, asyncHandler(async (req, res) => {
+router.post('/logout', authenticateToken, asyncHandler(async (req: Request, res: Response) => {
   // In einer echten Anwendung würde man hier den Token zur Blacklist hinzufügen
   res.json({
     message: 'Erfolgreich abgemeldet'

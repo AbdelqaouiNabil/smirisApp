@@ -58,6 +58,23 @@ interface AdminUser {
   whatsappNumber?: string
 }
 
+interface AdminTutor {
+  id: string
+  name: string
+  email: string
+  registrationDate: string
+  lastLogin: string
+  status: 'active' | 'inactive' | 'pending'
+  city?: string
+  isVerified: boolean
+  experienceYears?: number
+  hourlyRate?: number
+  specializations?: string[]
+  languages?: string
+  totalStudents?: number
+  rating?: number
+}
+
 const AdminPanel = () => {
   const { user, canAccessAdminPanel } = useAuth()
   const { toast } = useToast()
@@ -83,10 +100,13 @@ const AdminPanel = () => {
   })
 
   const [users, setUsers] = useState<AdminUser[]>([])
+  const [tutors, setTutors] = useState<AdminTutor[]>([])
   const [schools, setSchools] = useState<any[]>([])
   const [courses, setCourses] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedRole, setSelectedRole] = useState('all')
+  const [tutorSearchTerm, setTutorSearchTerm] = useState('')
+  const [selectedVerificationStatus, setSelectedVerificationStatus] = useState('all')
 
   useEffect(() => {
     if (!canAccessAdminPanel()) {
@@ -129,6 +149,27 @@ const AdminPanel = () => {
         whatsappNumber: u.whatsappNumber || ''
       }));
       setUsers(realUsers);
+      
+      // Fetch tutors specifically for the Tutors tab
+      const tutorsRes = await apiClient.get('/admin/tutors') as any;
+      const realTutors = (tutorsRes.tutors || []).map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        email: t.email,
+        registrationDate: t.created_at,
+        lastLogin: t.last_login,
+        status: t.is_active ? 'active' : 'inactive',
+        city: t.location || '',
+        isVerified: t.is_verified || false,
+        experienceYears: t.experience_years,
+        hourlyRate: t.hourly_rate,
+        specializations: t.specializations || [],
+        languages: t.languages || '',
+        totalStudents: t.total_students || 0,
+        rating: typeof t.rating === 'string' ? parseFloat(t.rating) || 0: (t.rating || 0)
+      }));
+      setTutors(realTutors);
+      
       // Fetch real schools for the Schulen tab
       const schoolsRes = await apiClient.get('/schools') as any;
       const realSchools = (schoolsRes.schools || []).map((s: any) => ({
@@ -182,6 +223,15 @@ const AdminPanel = () => {
     return matchesSearch && matchesRole
   })
 
+  const filteredTutors = tutors.filter(tutor => {
+    const matchesSearch = tutor.name.toLowerCase().includes(tutorSearchTerm.toLowerCase()) ||
+                         tutor.email.toLowerCase().includes(tutorSearchTerm.toLowerCase())
+    const matchesVerification = selectedVerificationStatus === 'all' || 
+                               (selectedVerificationStatus === 'verified' && tutor.isVerified) ||
+                               (selectedVerificationStatus === 'unverified' && !tutor.isVerified)
+    return matchesSearch && matchesVerification
+  })
+
   const exportUserData = () => {
     const csvContent = "data:text/csv;charset=utf-8," + 
       "Name,Email,Role,Registration Date,Last Login,Status,City\n" +
@@ -200,6 +250,27 @@ const AdminPanel = () => {
     toast({
       title: "Export erfolgreich",
       description: "Benutzerdaten wurden exportiert",
+    })
+  }
+
+  const exportTutorData = () => {
+    const csvContent = "data:text/csv;charset=utf-8," + 
+      "Name,Email,Verifiziert,Erfahrung (Jahre),Stundensatz,Spezialisierungen,Sprachen,Studenten,Bewertung,Status\n" +
+      filteredTutors.map(tutor => 
+        `${tutor.name},${tutor.email},${tutor.isVerified ? 'Ja' : 'Nein'},${tutor.experienceYears || 0},${tutor.hourlyRate || 0},${(tutor.specializations || []).join(';')},${(tutor.languages || '').split(',').join(';')},${tutor.totalStudents || 0},${tutor.rating || 0},${tutor.status}`
+      ).join("\n")
+    
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement("a")
+    link.setAttribute("href", encodedUri)
+    link.setAttribute("download", "tutors_export.csv")
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    toast({
+      title: "Export erfolgreich",
+      description: "Tutor-Daten wurden als CSV exportiert",
     })
   }
 
@@ -269,6 +340,54 @@ const AdminPanel = () => {
       toast({ title: 'Fehler beim Statuswechsel', description: error.message, variant: 'destructive' });
     }
   };
+
+  const handleToggleTutorVerification = async (tutor: AdminTutor) => {
+    try {
+      await apiClient.patch(`/admin/tutors/${tutor.id}/verify`, {
+        is_verified: !tutor.isVerified
+      });
+      
+      setTutors(prev => prev.map(t => 
+        t.id === tutor.id ? { ...t, isVerified: !t.isVerified } : t
+      ));
+      
+      toast({
+        title: "Verifizierung aktualisiert",
+        description: `${tutor.name} wurde ${!tutor.isVerified ? 'verifiziert' : 'deverifiziert'}`,
+      });
+    } catch (error) {
+      console.error('Error toggling tutor verification:', error);
+      toast({
+        title: "Fehler",
+        description: "Fehler beim Aktualisieren der Verifizierung",
+        variant: "destructive"
+      });
+    }
+  }
+
+  const handleToggleTutorStatus = async (tutor: AdminTutor) => {
+    try {
+      await apiClient.patch(`/admin/tutors/${tutor.id}/status`, {
+        isActive: tutor.status === 'inactive'
+      });
+      
+      setTutors(prev => prev.map(t => 
+        t.id === tutor.id ? { ...t, status: tutor.status === 'active' ? 'inactive' : 'active' } : t
+      ));
+      
+      toast({
+        title: "Status aktualisiert",
+        description: `${tutor.name} wurde ${tutor.status === 'active' ? 'deaktiviert' : 'aktiviert'}`,
+      });
+    } catch (error) {
+      console.error('Error toggling tutor status:', error);
+      toast({
+        title: "Fehler",
+        description: "Fehler beim Aktualisieren des Status",
+        variant: "destructive"
+      });
+    }
+  }
 
   const renderDashboardTab = () => (
     <div className="space-y-6">
@@ -561,6 +680,139 @@ const AdminPanel = () => {
     </div>
   );
 
+  const renderTutorsTab = () => (
+    <div className="space-y-6">
+      {/* Tutor Management Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+        <h2 className="text-2xl font-bold text-gray-900">Tutoren Verwaltung</h2>
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={exportTutorData}
+            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
+          </button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-4">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <input
+            type="text"
+            placeholder="Nach Namen oder E-Mail suchen..."
+            value={tutorSearchTerm}
+            onChange={(e) => setTutorSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <select
+          value={selectedVerificationStatus}
+          onChange={(e) => setSelectedVerificationStatus(e.target.value)}
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="all">Alle Verifizierungsstatus</option>
+          <option value="verified">Verifiziert</option>
+          <option value="unverified">Nicht verifiziert</option>
+        </select>
+      </div>
+
+      {/* Tutors Table */}
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tutor</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Verifizierung</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Erfahrung</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stundensatz</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Studenten</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bewertung</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aktionen</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {filteredTutors.map((tutor) => (
+              <tr key={tutor.id}>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    <div className="w-10 h-10 bg-green-200 rounded-full flex items-center justify-center">
+                      <span className="text-green-600 font-medium">{tutor.name.charAt(0)}</span>
+                    </div>
+                    <div className="ml-4">
+                      <div className="text-sm font-medium text-gray-900">{tutor.name}</div>
+                      <div className="text-sm text-gray-500">{tutor.email}</div>
+                      {tutor.city && (
+                        <div className="text-xs text-gray-400 flex items-center">
+                          <MapPin className="w-3 h-3 mr-1" />
+                          {tutor.city}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                    tutor.isVerified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {tutor.isVerified ? 'Verifiziert' : 'Nicht verifiziert'}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {tutor.experienceYears || 0} Jahre
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {tutor.hourlyRate || 0} €/h
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {tutor.totalStudents || 0}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <div className="flex items-center">
+                    <span className="text-yellow-400">★</span>
+                    <span className="ml-1">{typeof tutor.rating === 'number' ? tutor.rating.toFixed(1) : (parseFloat(tutor.rating) ? parseFloat(tutor.rating).toFixed(1) : '0.0')}</span>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                    tutor.status === 'active' ? 'bg-green-100 text-green-800' :
+                    tutor.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-red-100'
+                  }`}>
+                    {tutor.status}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <div className="flex items-center space-x-2">
+                    <button className="text-blue-600 hover:text-blue-900">
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button 
+                      className={`hover:text-green-900 ${tutor.isVerified ? 'text-green-600' : 'text-yellow-600'}`}
+                      onClick={() => handleToggleTutorVerification(tutor)}
+                      title={tutor.isVerified ? 'Verifizierung entfernen' : 'Verifizieren'}
+                    >
+                      <ShieldCheck className="w-4 h-4" />
+                    </button>
+                    <button className="text-gray-600 hover:text-gray-900" onClick={() => handleToggleTutorStatus(tutor)}>
+                      {tutor.status === 'active' ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                    <button className="text-red-600 hover:text-red-900" onClick={() => handleDeleteUser(tutor.id)}>
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+
   const renderVisaServicesTab = () => (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-900">Visa-Dienste Verwaltung</h2>
@@ -620,6 +872,14 @@ const AdminPanel = () => {
           Benutzerverwaltung
         </button>
         <button
+          onClick={() => setActiveTab('tutors')}
+          className={`py-4 px-6 border-b-2 font-medium text-lg ${
+            activeTab === 'tutors' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Tutoren
+        </button>
+        <button
           onClick={() => setActiveTab('schools')}
           className={`py-4 px-6 border-b-2 font-medium text-lg ${
             activeTab === 'schools' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -648,6 +908,7 @@ const AdminPanel = () => {
       {/* Content based on active tab */}
       {activeTab === 'dashboard' && renderDashboardTab()}
       {activeTab === 'users' && renderUsersTab()}
+      {activeTab === 'tutors' && renderTutorsTab()}
       {activeTab === 'schools' && renderSchoolsTab()}
       {activeTab === 'courses' && renderCoursesTab()}
       {activeTab === 'visaServices' && renderVisaServicesTab()}
