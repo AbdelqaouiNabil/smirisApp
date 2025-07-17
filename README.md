@@ -169,6 +169,15 @@ docker run -p 3000:3000 -p 5000:5000 smiris-app
 - ✅ Enhanced error handling and validation
 - ✅ Improved navigation and routing
 
+### Major Changes (July 2025)
+- Added PATCH /api/admin/tutors/:id/verify for admin tutor verification
+- Fixed frontend to use is_verified in PATCH requests
+- Ensured dashboard and admin panel use correct tutor/user ID logic
+- Added and fixed GET /api/tutors/:id backend route for tutor details
+- Added debug logging to API client for GET requests
+- General bug fixes for tutor registration, dashboard, and admin panel
+- Improved error handling and ID mapping between users and tutors
+
 ## 🤝 Contributing
 
 1. Fork the repository
