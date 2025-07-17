@@ -73,6 +73,9 @@ interface AdminTutor {
   languages?: string
   totalStudents?: number
   rating?: number
+  profile_photo?: string | null
+  cv_file_path?: string | null
+  certificate_files?: string[] | null
 }
 
 const AdminPanel = () => {
@@ -166,7 +169,10 @@ const AdminPanel = () => {
         specializations: t.specializations || [],
         languages: t.languages || '',
         totalStudents: t.total_students || 0,
-        rating: typeof t.rating === 'string' ? parseFloat(t.rating) || 0: (t.rating || 0)
+        rating: typeof t.rating === 'string' ? parseFloat(t.rating) || 0: (t.rating || 0),
+        profile_photo: t.profile_photo || null,
+        cv_file_path: t.cv_file_path || null,
+        certificate_files: t.certificate_files ? (Array.isArray(t.certificate_files) ? t.certificate_files : (typeof t.certificate_files === 'string' ? JSON.parse(t.certificate_files) : []) ) : null
       }));
       setTutors(realTutors);
       
@@ -680,138 +686,122 @@ const AdminPanel = () => {
     </div>
   );
 
-  const renderTutorsTab = () => (
-    <div className="space-y-6">
-      {/* Tutor Management Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-        <h2 className="text-2xl font-bold text-gray-900">Tutoren Verwaltung</h2>
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={exportTutorData}
-            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+  const renderTutorsTab = () => {
+    const BASE_URL = 'http://localhost:5000'; // Adjust if your backend runs on a different port
+    return (
+      <div className="space-y-6">
+        {/* Tutor Management Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+          <h2 className="text-2xl font-bold text-gray-900">Tutoren Verwaltung</h2>
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={exportTutorData}
+              className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
+            </button>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Nach Namen oder E-Mail suchen..."
+              value={tutorSearchTerm}
+              onChange={(e) => setTutorSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <select
+            value={selectedVerificationStatus}
+            onChange={(e) => setSelectedVerificationStatus(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <Download className="w-4 h-4 mr-2" />
-            Export CSV
-          </button>
+            <option value="all">Alle Verifizierungsstatus</option>
+            <option value="verified">Verifiziert</option>
+            <option value="unverified">Nicht verifiziert</option>
+          </select>
+        </div>
+
+        {/* Tutors Card Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredTutors.map((tutor) => (
+            <div key={tutor.id} className="bg-white rounded-xl shadow-md p-6 flex flex-col justify-between hover:shadow-lg transition-shadow">
+              <div className="flex items-center mb-4">
+                {tutor.profile_photo ? (
+                  <img src={`${BASE_URL}/${tutor.profile_photo.replace(/^uploads[\\/]/, 'uploads/')}`} alt="Profilfoto" className="w-12 h-12 rounded-full object-cover border-2 border-green-400" />
+                ) : (
+                  <div className="w-12 h-12 bg-green-200 rounded-full flex items-center justify-center text-xl font-bold text-green-700">
+                    {tutor.name.charAt(0)}
+                  </div>
+                )}
+                <div className="ml-4">
+                  <div className="text-lg font-semibold text-gray-900">{tutor.name}</div>
+                  <div className="text-sm text-gray-500">{tutor.email}</div>
+                  {tutor.city && (
+                    <div className="text-xs text-gray-400 flex items-center">
+                      <MapPin className="w-3 h-3 mr-1" />
+                      {tutor.city}
+                    </div>
+                  )}
+                </div>
+              </div>
+              {/* Tutor Files Section */}
+              <div className="mb-4 space-y-1">
+                {tutor.cv_file_path && (
+                  <a href={`${BASE_URL}/${tutor.cv_file_path.replace(/^uploads[\\/]/, 'uploads/')}`} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline text-xs">
+                    Lebenslauf ansehen
+                  </a>
+                )}
+                {tutor.certificate_files && tutor.certificate_files.length > 0 && (
+                  <div className="flex flex-col space-y-1">
+                    {tutor.certificate_files.map((file, idx) => {
+                      if (typeof file !== 'string') return null;
+                      return (
+                        <a key={idx} href={`${BASE_URL}/${file.replace(/^uploads[\\/]/, 'uploads/')}`} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline text-xs">
+                          Zertifikat {idx + 1} ansehen
+                        </a>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2 mb-4">
+                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${tutor.isVerified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{tutor.isVerified ? 'Verifiziert' : 'Nicht verifiziert'}</span>
+                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">{tutor.experienceYears || 0} Jahre Erfahrung</span>
+                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">{tutor.hourlyRate || 0} €/h</span>
+                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800">{tutor.totalStudents || 0} Studenten</span>
+                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 flex items-center"><span className="text-yellow-400 mr-1">★</span>{typeof tutor.rating === 'number' ? tutor.rating.toFixed(1) : (parseFloat(tutor.rating) ? parseFloat(tutor.rating).toFixed(1) : '0.0')}</span>
+                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${tutor.status === 'active' ? 'bg-green-100 text-green-800' : tutor.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100'}`}>{tutor.status}</span>
+              </div>
+              <div className="flex items-center space-x-2 mt-auto">
+                <button className="text-blue-600 hover:text-blue-900">
+                  <Edit className="w-4 h-4" />
+                </button>
+                <button 
+                  className={`hover:text-green-900 ${tutor.isVerified ? 'text-green-600' : 'text-yellow-600'}`}
+                  onClick={() => handleToggleTutorVerification(tutor)}
+                  title={tutor.isVerified ? 'Verifizierung entfernen' : 'Verifizieren'}
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                </button>
+                <button className="text-gray-600 hover:text-gray-900" onClick={() => handleToggleTutorStatus(tutor)}>
+                  {tutor.status === 'active' ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+                <button className="text-red-600 hover:text-red-900" onClick={() => handleDeleteUser(tutor.id)}>
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
-
-      {/* Filters */}
-      <div className="flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-4">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <input
-            type="text"
-            placeholder="Nach Namen oder E-Mail suchen..."
-            value={tutorSearchTerm}
-            onChange={(e) => setTutorSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <select
-          value={selectedVerificationStatus}
-          onChange={(e) => setSelectedVerificationStatus(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="all">Alle Verifizierungsstatus</option>
-          <option value="verified">Verifiziert</option>
-          <option value="unverified">Nicht verifiziert</option>
-        </select>
-      </div>
-
-      {/* Tutors Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tutor</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Verifizierung</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Erfahrung</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stundensatz</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Studenten</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bewertung</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aktionen</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredTutors.map((tutor) => (
-              <tr key={tutor.id}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <div className="w-10 h-10 bg-green-200 rounded-full flex items-center justify-center">
-                      <span className="text-green-600 font-medium">{tutor.name.charAt(0)}</span>
-                    </div>
-                    <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900">{tutor.name}</div>
-                      <div className="text-sm text-gray-500">{tutor.email}</div>
-                      {tutor.city && (
-                        <div className="text-xs text-gray-400 flex items-center">
-                          <MapPin className="w-3 h-3 mr-1" />
-                          {tutor.city}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    tutor.isVerified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {tutor.isVerified ? 'Verifiziert' : 'Nicht verifiziert'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {tutor.experienceYears || 0} Jahre
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {tutor.hourlyRate || 0} €/h
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {tutor.totalStudents || 0}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <div className="flex items-center">
-                    <span className="text-yellow-400">★</span>
-                    <span className="ml-1">{typeof tutor.rating === 'number' ? tutor.rating.toFixed(1) : (parseFloat(tutor.rating) ? parseFloat(tutor.rating).toFixed(1) : '0.0')}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    tutor.status === 'active' ? 'bg-green-100 text-green-800' :
-                    tutor.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-red-100'
-                  }`}>
-                    {tutor.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <div className="flex items-center space-x-2">
-                    <button className="text-blue-600 hover:text-blue-900">
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button 
-                      className={`hover:text-green-900 ${tutor.isVerified ? 'text-green-600' : 'text-yellow-600'}`}
-                      onClick={() => handleToggleTutorVerification(tutor)}
-                      title={tutor.isVerified ? 'Verifizierung entfernen' : 'Verifizieren'}
-                    >
-                      <ShieldCheck className="w-4 h-4" />
-                    </button>
-                    <button className="text-gray-600 hover:text-gray-900" onClick={() => handleToggleTutorStatus(tutor)}>
-                      {tutor.status === 'active' ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                    <button className="text-red-600 hover:text-red-900" onClick={() => handleDeleteUser(tutor.id)}>
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
+    );
+  }
 
   const renderVisaServicesTab = () => (
     <div className="space-y-6">

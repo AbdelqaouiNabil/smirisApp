@@ -6,7 +6,7 @@ import { useToast } from '../hooks/use-toast'
 import { 
   Calendar as CalendarIcon, Users, Euro, Star, Clock, 
   MessageCircle, TrendingUp, BookOpen, Award, Settings,
-  Plus, Edit, Trash2, CheckCircle, AlertCircle, Eye, CalendarClock
+  Plus, Edit, Trash2, CheckCircle, AlertCircle, Eye, CalendarClock, Bell
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { tutorsApi, coursesApi, bookingsApi } from '../lib/api'
@@ -111,6 +111,8 @@ export default function TutorDashboard() {
 
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isVerified, setIsVerified] = useState(true); // Assume true by default
+  const [notifications, setNotifications] = useState<import('../lib/api').Notification[]>([])
+  const [showNotifications, setShowNotifications] = useState(false)
 
   const handleCourseInput = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -181,6 +183,7 @@ export default function TutorDashboard() {
   useEffect(() => {
     if (user && user.role === 'tutor') {
       loadData()
+      loadNotifications()
     }
   }, [user])
 
@@ -244,6 +247,15 @@ export default function TutorDashboard() {
         description: error.message || 'Bitte versuchen Sie es später erneut.',
         variant: 'destructive'
       })
+    }
+  }
+
+  const loadNotifications = async () => {
+    try {
+      const res = await bookingsApi.getTutorNotifications({ is_read: false })
+      setNotifications(res.notifications || [])
+    } catch (error) {
+      // Optionally show a toast
     }
   }
 
@@ -645,6 +657,39 @@ export default function TutorDashboard() {
           </div>
         </div>
       )}
+      {/* Notification Bell */}
+      <div className="flex justify-end mb-4">
+        <div className="relative">
+          <button
+            className="relative p-2 rounded-full hover:bg-emerald-100 focus:outline-none"
+            onClick={() => setShowNotifications(v => !v)}
+            aria-label="Benachrichtigungen anzeigen"
+          >
+            <Bell className="text-emerald-600" size={28} />
+            {notifications.length > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {notifications.length}
+              </span>
+            )}
+          </button>
+          {showNotifications && (
+            <div className="absolute right-0 mt-2 w-96 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-96 overflow-y-auto">
+              <div className="p-4 border-b font-bold text-gray-900">Benachrichtigungen</div>
+              {notifications.length === 0 ? (
+                <div className="p-4 text-gray-500">Keine neuen Benachrichtigungen.</div>
+              ) : (
+                notifications.map(n => (
+                  <div key={n.id} className="p-4 border-b last:border-b-0 hover:bg-emerald-50 transition">
+                    <div className="font-semibold text-gray-800">{n.subject}</div>
+                    <div className="text-gray-700 text-sm mb-1">{n.message}</div>
+                    <div className="text-xs text-gray-400">{new Date(n.created_at).toLocaleString()}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      </div>
       {/* Course Creation Modal */}
       {showCourseModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">

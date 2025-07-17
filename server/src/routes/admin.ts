@@ -527,7 +527,8 @@ router.get('/tutors', requireAdmin, asyncHandler(async (req: Request, res: Respo
     SELECT 
       t.id, u.name, u.email, u.created_at, u.last_login, u.is_active, u.location,
       t.is_verified, t.experience_years, t.hourly_rate, t.specializations, t.languages,
-      t.total_students, t.rating
+      t.total_students, t.rating,
+      t.profile_photo, t.cv_file_path, t.certificate_files
     FROM tutors t
     JOIN users u ON t.user_id = u.id
     ORDER BY u.created_at DESC

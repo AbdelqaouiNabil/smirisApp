@@ -9,7 +9,7 @@ import App from './App.tsx'
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
-      <MVPApp />
+      <App />
     </ErrorBoundary>
   </StrictMode>,
 )

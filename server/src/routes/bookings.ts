@@ -6,6 +6,24 @@ import { asyncHandler, AppError, validationError } from '../middleware/errorHand
 
 const router = express.Router();
 
+// Tutor notifications endpoint
+router.get('/notifications', authenticateToken, asyncHandler(async (req: Request, res: Response) => {
+  // Only tutors can access their notifications
+  if (req.user!.role !== 'tutor') {
+    return res.status(403).json({ error: 'Nur Tutoren können Benachrichtigungen abrufen.' });
+  }
+  const userId = req.user!.id;
+  const { is_read } = req.query;
+  let queryStr = `SELECT * FROM messages WHERE recipient_id = $1`;
+  const params: any[] = [userId];
+  if (is_read === 'false') {
+    queryStr += ' AND is_read = FALSE';
+  }
+  queryStr += ' ORDER BY created_at DESC';
+  const result = await query(queryStr, params);
+  res.json({ notifications: result.rows });
+}));
+
 // Alle Buchungen für den aktuellen Benutzer abrufen
 router.get('/', [
   authenticateToken,
@@ -324,6 +342,37 @@ router.post('/', [
       [course_id]
     );
   }
+
+  // --- Tutor Notification Logic ---
+  if ((booking_type === 'tutor' && tutor_id) || (booking_type === 'course' && course_id)) {
+    // Get tutor's user_id
+    let tutorUserId: number | null = null;
+    if (tutor_id) {
+      const tutorUserRes = await query('SELECT user_id FROM tutors WHERE id = $1', [tutor_id]);
+      if (tutorUserRes.rows.length > 0) tutorUserId = tutorUserRes.rows[0].user_id;
+    } else if (course_id) {
+      // Get tutor_id from course, then user_id
+      const courseRes = await query('SELECT tutor_id FROM courses WHERE id = $1', [course_id]);
+      if (courseRes.rows.length > 0 && courseRes.rows[0].tutor_id) {
+        const tutorUserRes = await query('SELECT user_id FROM tutors WHERE id = $1', [courseRes.rows[0].tutor_id]);
+        if (tutorUserRes.rows.length > 0) tutorUserId = tutorUserRes.rows[0].user_id;
+      }
+    }
+    if (tutorUserId) {
+      const subject = booking_type === 'tutor'
+        ? 'Neue Einzelbuchung erhalten'
+        : 'Neue Kursbuchung erhalten';
+      const message = booking_type === 'tutor'
+        ? `Ein Student hat eine neue 1-zu-1 Sitzung am ${start_date} um ${time_slot} gebucht.`
+        : `Ein Student hat Ihren Kurs gebucht (Kurs-ID: ${course_id}).`;
+      await query(
+        `INSERT INTO messages (sender_id, recipient_id, subject, message, message_type, related_booking_id)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [student_id, tutorUserId, subject, message, 'booking', newBooking.id]
+      );
+    }
+  }
+  // --- End Tutor Notification Logic ---
 
   res.status(201).json({
     message: 'Buchung erfolgreich erstellt',

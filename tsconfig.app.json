@@ -38,5 +38,5 @@
   },
   "include": [
     "src"
-  ]
+, "fixTutorFilePaths.js"  ]
 }

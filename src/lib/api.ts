@@ -176,6 +176,19 @@ export interface AuthTokens {
   }
 }
 
+export interface Notification {
+  id: number;
+  uuid: string;
+  sender_id: number;
+  recipient_id: number;
+  subject: string;
+  message: string;
+  is_read: boolean;
+  message_type: string;
+  related_booking_id?: number;
+  created_at: string;
+}
+
 // Error handling
 export class ApiError extends Error {
   constructor(
@@ -487,7 +500,10 @@ export const bookingsApi = {
     apiClient.delete(`/bookings/${id}`),
   
   getStudentCourses: (params?: { page?: number; limit?: number; status?: string }) =>
-    apiClient.get<{ courseBookings: CourseBooking[]; pagination: any }>('/bookings/student/courses', params)
+    apiClient.get<{ courseBookings: CourseBooking[]; pagination: any }>('/bookings/student/courses', params),
+  
+  getTutorNotifications: (params?: { is_read?: boolean }) =>
+    apiClient.get<{ notifications: Notification[] }>('/bookings/notifications', params)
 }
 
 export const paymentsApi = {

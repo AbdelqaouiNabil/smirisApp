@@ -210,3 +210,38 @@ For support and questions:
 ---
 
 **Made with ❤️ for language learners in Germany**
+
+## Troubleshooting: TypeScript Node.js Type Errors
+
+If you see an error like:
+
+```
+File '.../node_modules/@types/node/index.d.ts' not found.
+```
+
+**Fix:** Install the missing Node.js type definitions:
+
+```
+npm install --save-dev @types/node
+```
+
+Or with pnpm:
+
+```
+pnpm add -D @types/node
+```
+
+This will resolve the error and allow TypeScript to find the required Node.js types.
+
+## Recent Major Modifications
+
+- **Tutor Notification System:**
+  - Tutors now receive notifications when a student books their course or session. Notifications are shown in the Tutor Dashboard with a bell icon and dropdown.
+- **Admin Panel Tutor File Display:**
+  - The admin panel now displays tutor files (profile photo, CV, certificates) as links or images in tutor cards.
+- **File Path Fixes:**
+  - All tutor file paths are now stored as relative paths and served via the backend, allowing proper file access from the frontend.
+- **General Bug Fixes:**
+  - Various improvements to error handling and TypeScript configuration.
+
+---
