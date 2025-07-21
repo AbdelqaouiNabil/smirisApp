@@ -18,12 +18,14 @@ import {
   Mail,
   Phone,
   Upload,
-  Save
+  Save,
+  Bell
 } from 'lucide-react'
 import { schoolsApi } from '../lib/api'
 import { coursesApi } from '../lib/api'
 import React from 'react'
 import { API_BASE_URL } from '../lib/api';
+import { bookingsApi } from '../lib/api'
 
 interface SchoolStats {
   totalCourses: number
@@ -63,7 +65,7 @@ interface SchoolInfo {
 }
 
 const SchoolDashboard = () => {
-  const { user, canManageSchool } = useAuth()
+  const { user, canManageSchool, isLoading } = useAuth()
   const { toast } = useToast()
   
   const [activeTab, setActiveTab] = useState('overview')
@@ -112,18 +114,18 @@ const SchoolDashboard = () => {
   const [editFormError, setEditFormError] = useState<string | null>(null)
   const [reviews, setReviews] = useState<any[]>([]);
   const [courseReviews, setCourseReviews] = useState<{ [courseId: number]: any[] }>({});
+  const [notifications, setNotifications] = useState<import('../lib/api').Notification[]>([])
+  const [showNotifications, setShowNotifications] = useState(false)
 
   useEffect(() => {
-    if (!canManageSchool()) {
-      toast({
-        title: "Zugriff verweigert",
-        description: "Sie haben keine Berechtigung für das School-Dashboard",
-        variant: "destructive"
-      })
-      return
-    }
-    loadSchoolData()
-  }, [])
+    if (!canManageSchool() || !user) return;
+    loadSchoolData();
+  }, [user]);
+
+  useEffect(() => {
+    if (!canManageSchool() || !user) return;
+    loadNotifications();
+  }, [user]);
 
   useEffect(() => {
     if (courses.length === 0) return;
@@ -195,6 +197,15 @@ const SchoolDashboard = () => {
         description: "Fehler beim Laden der School-Daten",
         variant: "destructive"
       })
+    }
+  }
+
+  const loadNotifications = async () => {
+    try {
+      const res = await bookingsApi.getSchoolNotifications({ is_read: false })
+      setNotifications(res.notifications || [])
+    } catch (e) {
+      // Optionally handle error
     }
   }
 
@@ -763,6 +774,13 @@ const SchoolDashboard = () => {
     </div>
   )
 
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center text-xl text-gray-500">Loading...</div>;
+  }
+  if (!user) {
+    return <div className="min-h-screen flex items-center justify-center text-xl text-gray-500">Bitte einloggen...</div>;
+  }
+
   if (!canManageSchool()) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -779,9 +797,37 @@ const SchoolDashboard = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">{schoolInfo.name}</h1>
-          <p className="text-gray-600">School Dashboard - Verwalten Sie Ihre Kurse und Informationen</p>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">{schoolInfo.name}</h1>
+            <p className="text-gray-600">School Dashboard - Verwalten Sie Ihre Kurse und Informationen</p>
+          </div>
+          <div className="relative">
+            <button onClick={() => setShowNotifications((v) => !v)} className="relative">
+              <Bell className="w-7 h-7 text-gray-700" />
+              {notifications.filter(n => !n.is_read).length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">
+                  {notifications.filter(n => !n.is_read).length}
+                </span>
+              )}
+            </button>
+            {showNotifications && (
+              <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                <div className="p-3 border-b font-semibold text-gray-700">Benachrichtigungen</div>
+                {notifications.length === 0 ? (
+                  <div className="p-4 text-gray-500 text-sm">Keine neuen Benachrichtigungen.</div>
+                ) : (
+                  notifications.map((n) => (
+                    <div key={n.id} className="p-3 border-b last:border-b-0 hover:bg-gray-50">
+                      <div className="font-medium text-gray-900">{n.subject}</div>
+                      <div className="text-gray-700 text-sm">{n.message}</div>
+                      <div className="text-xs text-gray-400 mt-1">{new Date(n.created_at).toLocaleString()}</div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Tabs */}

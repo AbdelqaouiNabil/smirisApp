@@ -6,11 +6,11 @@ import { asyncHandler, AppError, validationError } from '../middleware/errorHand
 
 const router = express.Router();
 
-// Tutor notifications endpoint
+// Notifications endpoint for both school and tutor roles
 router.get('/notifications', authenticateToken, asyncHandler(async (req: Request, res: Response) => {
-  // Only tutors can access their notifications
-  if (req.user!.role !== 'tutor') {
-    return res.status(403).json({ error: 'Nur Tutoren können Benachrichtigungen abrufen.' });
+  // Only tutors and schools can access their notifications
+  if (req.user!.role !== 'tutor' && req.user!.role !== 'school') {
+    return res.status(403).json({ error: 'Nur Tutoren oder Schulen können Benachrichtigungen abrufen.' });
   }
   const userId = req.user!.id;
   const { is_read } = req.query;
@@ -297,6 +297,19 @@ router.post('/', [
     }
   }
 
+  // Restrict student from booking two sessions with different tutors at the same time slot
+  if (booking_type === 'tutor') {
+    const conflict = await query(
+      `SELECT id FROM bookings 
+       WHERE student_id = $1 AND booking_type = 'tutor' AND start_date = $2 AND time_slot = $3 
+         AND status IN ('pending', 'confirmed')`,
+      [student_id, start_date, time_slot]
+    );
+    if (conflict.rows.length > 0) {
+      throw new AppError('Sie können nicht zwei verschiedene Tutoren zur gleichen Zeit buchen. Bitte wählen Sie einen anderen Zeitslot.', 409);
+    }
+  }
+
   // Buchung erstellen
   const bookingResult = await query(
     `INSERT INTO bookings (
@@ -373,6 +386,34 @@ router.post('/', [
     }
   }
   // --- End Tutor Notification Logic ---
+
+  // --- School Notification Logic ---
+  if (booking_type === 'course' && course_id) {
+    // Get school_id from course
+    const courseRes = await query('SELECT school_id FROM courses WHERE id = $1', [course_id]);
+    if (courseRes.rows.length > 0 && courseRes.rows[0].school_id) {
+      const schoolId = courseRes.rows[0].school_id;
+      // Get owner_id from schools
+      const schoolRes = await query('SELECT owner_id FROM schools WHERE id = $1', [schoolId]);
+      if (schoolRes.rows.length > 0 && schoolRes.rows[0].owner_id) {
+        const schoolOwnerId = schoolRes.rows[0].owner_id;
+        // Insert notification for school owner
+        await query(
+          `INSERT INTO messages (sender_id, recipient_id, subject, message, message_type, related_booking_id)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            student_id,
+            schoolOwnerId,
+            'Neue Kursbuchung erhalten',
+            `Ein Student hat einen Ihrer Kurse gebucht (Kurs-ID: ${course_id}).`,
+            'booking',
+            newBooking.id
+          ]
+        );
+      }
+    }
+  }
+  // --- End School Notification Logic ---
 
   res.status(201).json({
     message: 'Buchung erfolgreich erstellt',

@@ -72,7 +72,7 @@ interface Review {
 
 export default function TutorDashboard() {
   const { toast } = useToast()
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
   const navigate = useNavigate();
   
   const [activeTab, setActiveTab] = useState('overview')
@@ -181,11 +181,10 @@ export default function TutorDashboard() {
   };
 
   useEffect(() => {
-    if (user && user.role === 'tutor') {
-      loadData()
-      loadNotifications()
-    }
-  }, [user])
+    if (!user) return;
+    loadData();
+    loadNotifications();
+  }, [user]);
 
   const loadData = async () => {
     if (!user) return
@@ -644,6 +643,13 @@ export default function TutorDashboard() {
     { id: 'earnings', label: 'Einnahmen', icon: Euro },
     { id: 'settings', label: 'Einstellungen', icon: Settings }
   ]
+
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center text-xl text-gray-500">Loading...</div>;
+  }
+  if (!user) {
+    return <div className="min-h-screen flex items-center justify-center text-xl text-gray-500">Bitte einloggen...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-emerald-50 py-8 px-4">

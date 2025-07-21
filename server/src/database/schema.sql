@@ -9,9 +9,9 @@ CREATE EXTENSION IF NOT EXISTS "postgis"; -- Für geografische Daten
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
   uuid UUID DEFAULT uuid_generate_v4() UNIQUE,
-  name VARCHAR(100) NOT NULL,
-  email VARCHAR(100) UNIQUE NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255),
   role VARCHAR(20) NOT NULL DEFAULT 'student', -- 'student', 'tutor', 'school', 'admin'
   phone VARCHAR(20),
   avatar_url TEXT,
@@ -21,7 +21,12 @@ CREATE TABLE users (
   is_active BOOLEAN DEFAULT TRUE,
   last_login TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  google_id VARCHAR(255) UNIQUE,
+  whatsapp_number VARCHAR(50),
+  verification_token VARCHAR(255),
+  reset_token VARCHAR(255),
+  reset_token_expires_at TIMESTAMPTZ,
 );
 
 -- Schulen-Tabelle

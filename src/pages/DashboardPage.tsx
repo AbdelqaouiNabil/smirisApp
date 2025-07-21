@@ -55,7 +55,7 @@ interface CalendarEvent {
 export default function DashboardPage() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
   
   // Get tab from URL query parameter
   const queryParams = new URLSearchParams(location.search)
@@ -84,6 +84,7 @@ export default function DashboardPage() {
   const [selectedDate, setSelectedDate] = useState(new Date())
 
   useEffect(() => {
+    if (!user) return;
     const loadDashboardData = async () => {
       try {
         const [bookingsRes, tutorsRes, courseBookingsRes] = await Promise.all([
@@ -632,8 +633,11 @@ export default function DashboardPage() {
     )
   }
 
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center text-xl text-gray-500">Loading...</div>;
+  }
   if (!user) {
-    return <div>Loading...</div>
+    return <div className="min-h-screen flex items-center justify-center text-xl text-gray-500">Bitte einloggen...</div>;
   }
 
   return (

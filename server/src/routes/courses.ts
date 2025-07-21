@@ -460,19 +460,22 @@ router.delete('/tutor/:id', [
     throw validationError('Ungültige Kurs-ID');
   }
 
-  // Find the tutor's ID for the logged-in user
-  const tutorResult = await query('SELECT id FROM tutors WHERE user_id = $1', [req.user!.id]);
-  if (tutorResult.rows.length === 0) {
-    throw new AppError('Tutor-Profil nicht gefunden', 404);
+  let tutorId: number | undefined;
+  if (req.user!.role === 'tutor') {
+    // Find the tutor's ID for the logged-in user
+    const tutorResult = await query('SELECT id FROM tutors WHERE user_id = $1', [req.user!.id]);
+    if (tutorResult.rows.length === 0) {
+      throw new AppError('Tutor-Profil nicht gefunden', 404);
+    }
+    tutorId = tutorResult.rows[0].id;
   }
-  const tutorId = tutorResult.rows[0].id;
 
-  // Check if the course belongs to this tutor
+  // Check if the course belongs to this tutor (if tutor) or just exists (if admin)
   const courseResult = await query('SELECT id, tutor_id FROM courses WHERE id = $1', [courseId]);
   if (courseResult.rows.length === 0) {
     throw new AppError('Kurs nicht gefunden', 404);
   }
-  if (courseResult.rows[0].tutor_id !== tutorId) {
+  if (req.user!.role === 'tutor' && courseResult.rows[0].tutor_id !== tutorId) {
     throw new AppError('Keine Berechtigung diesen Kurs zu löschen', 403);
   }
 

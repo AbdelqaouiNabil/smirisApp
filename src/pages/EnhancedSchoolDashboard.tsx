@@ -206,7 +206,7 @@ interface SchoolInfo {
 const localizer = momentLocalizer(moment)
 
 const EnhancedSchoolDashboard = () => {
-  const { user, canManageSchool } = useAuth()
+  const { user, isLoading, canManageSchool } = useAuth()
   const { toast } = useToast()
   
   const [activeTab, setActiveTab] = useState('overview')
@@ -277,6 +277,7 @@ const EnhancedSchoolDashboard = () => {
 
   // Simulated data loading
   useEffect(() => {
+    if (!user) return;
     loadDashboardData();
   }, [user]);
 
@@ -1090,7 +1091,13 @@ const EnhancedSchoolDashboard = () => {
     { id: 'settings', label: 'Einstellungen', icon: Settings }
   ]
 
-  if (!user || !canManageSchool) {
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center text-xl text-gray-500">Loading...</div>;
+  }
+  if (!user) {
+    return <div className="min-h-screen flex items-center justify-center text-xl text-gray-500">Bitte einloggen...</div>;
+  }
+  if (!canManageSchool) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="text-center">

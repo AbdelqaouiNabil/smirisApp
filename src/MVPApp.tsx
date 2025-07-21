@@ -5,6 +5,7 @@ import MVPNavbar from './components/Layout/MVPNavbar'
 import Footer from './components/Layout/Footer'
 import { Toaster } from './components/ui/toaster'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { ProtectedRoute } from './components/ProtectedRoute'
 
 // MVP Pages
 import MVPHomepage from './pages/MVPHomepage'
@@ -13,6 +14,7 @@ import TutorRegistrationPage from './pages/TutorRegistrationPage'
 import TutorDashboard from './pages/TutorDashboard'
 import StudentTutorDashboard from './pages/StudentTutorDashboard'
 import TutorProfileCompletePage from './pages/TutorProfileCompletePage';
+import AdminPanel from './pages/AdminPanel'
 
 // Existing Pages (simplified for MVP)
 import TutorsPage from './pages/TutorsPage'
@@ -23,8 +25,11 @@ import BookingPage from './pages/BookingPage'
 import LoginPage from './pages/LoginPage'
 import SchoolDashboard from './pages/SchoolDashboard'
 import ComparisonPage from './pages/ComparisonPage'
+import VisaServicesPage from './pages/VisaServicesPage';
+import AuthCallback from './pages/AuthCallback'; // Import the new component
 
 import './App.css'
+import { useAuth } from './contexts/AuthContext'
 
 function MVPApp() {
   return (
@@ -44,10 +49,12 @@ function MVPApp() {
                   {/* Tutor System - MVP Focus */}
                   <Route path="/tutoren" element={<TutorsPage />} />
                   <Route path="/tutors" element={<TutorsPage />} />
+                  <Route path="/visa-services" element={<VisaServicesPage />} />
+                  <Route path="/auth/callback" element={<AuthCallback />} />
                   <Route path="/tutor-anmeldung" element={<TutorRegistrationPage />} />
                   <Route path="/tutor-registration" element={<TutorRegistrationPage />} />
-                  <Route path="/tutor-dashboard" element={<TutorDashboard />} />
-                  <Route path="/student-tutor-dashboard" element={<StudentTutorDashboard />} />
+                  <Route path="/tutor-dashboard" element={<ProtectedRoute><TutorDashboard /></ProtectedRoute>} />
+                  <Route path="/student-tutor-dashboard" element={<ProtectedRoute><StudentTutorDashboard /></ProtectedRoute>} />
                   <Route path="/tutor-profile-complete" element={<TutorProfileCompletePage />} />
                   
                   {/* Schools - Simplified */}
@@ -74,6 +81,9 @@ function MVPApp() {
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/anmelden" element={<LoginPage />} />
                   
+                  {/* Admin Panel */}
+                  <Route path="/admin" element={<ProtectedRoute><AdminPanelGuard /></ProtectedRoute>} />
+                  
                   {/* Catch-all redirect to comparison hub */}
                   <Route path="*" element={<ComparisonHub />} />
                 </Routes>
@@ -86,6 +96,14 @@ function MVPApp() {
       </AuthProvider>
     </ErrorBoundary>
   )
+}
+
+function AdminPanelGuard() {
+  const { user } = useAuth();
+  if (!user || user.role !== 'admin') {
+    return <div className="min-h-screen flex items-center justify-center text-xl text-red-600">Zugriff verweigert</div>;
+  }
+  return <AdminPanel />;
 }
 
 export default MVPApp

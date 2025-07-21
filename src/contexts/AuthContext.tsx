@@ -50,6 +50,7 @@ interface AuthContextType {
   user: User | null
   isAuthenticated: boolean
   login: (email: string, password: string) => Promise<boolean>
+  handleAuthentication: (accessToken: string, refreshToken: string) => Promise<void>;
   logout: () => Promise<void>
   register: (name: string, email: string, password: string, role: string) => Promise<boolean>
   registerStudent: (data: StudentRegistrationData) => Promise<boolean>
@@ -100,6 +101,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     checkAuth()
   }, [])
+
+  const handleAuthentication = async (accessToken: string, refreshToken: string) => {
+    setIsLoading(true);
+    try {
+      // 1. Store tokens
+      localStorage.setItem('auth_token', accessToken);
+      localStorage.setItem('refresh_token', refreshToken);
+      authApi.setToken(accessToken);
+
+      // 2. Fetch user profile
+      const response = await authApi.me() as any;
+      setUser(response.user || response);
+      localStorage.setItem('germansphere_user', JSON.stringify(response.user || response));
+      
+      console.log('User authenticated successfully via callback');
+    } catch (error) {
+      console.error('Failed to handle authentication callback:', error);
+      // Clean up on error
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('germansphere_user');
+      authApi.setToken(null);
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const login = async (email: string, password: string) => {
     setIsLoading(true)
@@ -242,6 +270,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     isAuthenticated: !!user,
     login,
+    handleAuthentication,
     logout,
     register,
     registerStudent,

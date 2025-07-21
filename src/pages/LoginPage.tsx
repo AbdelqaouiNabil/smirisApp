@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react'
 import { OAuth2Integration, OAuth2Service } from '../components/auth/OAuth2Integration'
+import { Button } from '../components/ui/button'
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true)
@@ -397,35 +398,34 @@ export default function LoginPage() {
             )}
           </form>
 
+          <div className="mt-4 text-center text-sm">
+            <p className="mb-2">Oder</p>
+            <Button 
+              variant="outline" 
+              className="w-full" 
+              onClick={() => window.location.href = 'http://localhost:5000/api/auth/google'}
+            >
+              Mit Google anmelden
+            </Button>
+          </div>
+
           {/* OAuth2 Integration */}
           <div className="mt-6">
             <OAuth2Integration
               onGoogleLogin={handleGoogleLogin}
               onFacebookLogin={handleFacebookLogin}
               onGithubLogin={handleGithubLogin}
-              isLoading={isLoading}
             />
           </div>
 
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Demo-Anmeldedaten</span>
-              </div>
-            </div>
-
-            <div className="mt-4 bg-gray-50 rounded-md p-4">
-              <p className="text-xs text-gray-600 mb-2">Für Demo-Zwecke können Sie sich mit beliebigen Daten anmelden:</p>
-              <ul className="text-xs text-gray-500 space-y-1">
-                <li>• E-Mail: beliebige gültige E-Mail-Adresse</li>
-                <li>• Passwort: mindestens 6 Zeichen</li>
-                <li>• Admin-Zugang: E-Mail mit "admin"</li>
-                <li>• Tutor-Zugang: E-Mail mit "tutor"</li>
-              </ul>
-            </div>
+          <div className="mt-4 text-center text-sm">
+            Noch kein Konto?{' '}
+            <button
+              onClick={() => setIsLogin(false)}
+              className="font-medium text-blue-700 hover:text-blue-500"
+            >
+              Hier registrieren
+            </button>
           </div>
         </div>
       </div>

@@ -56,7 +56,7 @@ interface TutorStats {
 }
 
 export default function StudentTutorDashboard() {
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const { toast } = useToast()
@@ -72,12 +72,10 @@ export default function StudentTutorDashboard() {
     averageRating: 0
   })
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [selectedTutor, setSelectedTutor] = useState<TutorBooking | null>(null)
   const [previousBookingCount, setPreviousBookingCount] = useState(0)
-  const [hasNewBookings, setHasNewBookings] = useState(false)
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewBooking, setReviewBooking] = useState<TutorBooking | null>(null);
   const [reviewRating, setReviewRating] = useState(0);
@@ -97,7 +95,7 @@ export default function StudentTutorDashboard() {
     if (showLoading) {
       setLoading(true)
     } else {
-      setRefreshing(true)
+      // setRefreshing(true) // Removed refreshing state
     }
     
     try {
@@ -131,7 +129,7 @@ export default function StudentTutorDashboard() {
       // Check for new bookings and show notification
       if (!showLoading && tutorBookings.length > previousBookingCount && previousBookingCount > 0) {
         const newBookings = tutorBookings.length - previousBookingCount
-        setHasNewBookings(true)
+        // setHasNewBookings(true) // Removed hasNewBookings state
         toast({
           title: "Neue Buchungen verfügbar!",
           description: `${newBookings} neue Tutor-Buchung${newBookings > 1 ? 'en' : ''} wurde${newBookings > 1 ? 'n' : ''} hinzugefügt.`,
@@ -141,13 +139,6 @@ export default function StudentTutorDashboard() {
       // Update previous booking count
       setPreviousBookingCount(tutorBookings.length)
       
-      // Show success message if refreshing
-      if (!showLoading) {
-        toast({
-          title: "Daten aktualisiert",
-          description: "Ihre Tutor-Buchungen wurden erfolgreich aktualisiert.",
-        })
-      }
     } catch (error) {
       console.error('Error loading tutor bookings:', error)
       toast({
@@ -157,7 +148,7 @@ export default function StudentTutorDashboard() {
       })
     } finally {
       setLoading(false)
-      setRefreshing(false)
+      // setRefreshing(false) // Removed refreshing state
     }
   }, [user, toast])
 
@@ -282,10 +273,11 @@ export default function StudentTutorDashboard() {
     })
   }
 
-  const handleRefreshData = () => {
-    setHasNewBookings(false) // Clear the new bookings indicator
-    loadTutorBookings(false)
-  }
+  // Remove the handleRefreshData function
+  // const handleRefreshData = () => {
+  //   setHasNewBookings(false) // Clear the new bookings indicator
+  //   loadTutorBookings(false)
+  // }
 
   const handleOpenReviewModal = (booking: TutorBooking) => {
     console.log('Opening review modal for booking:', booking);
@@ -531,15 +523,11 @@ export default function StudentTutorDashboard() {
     )
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Lade Ihre Daten...</p>
-        </div>
-      </div>
-    )
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center text-xl text-gray-500">Loading...</div>;
+  }
+  if (!user) {
+    return <div className="min-h-screen flex items-center justify-center text-xl text-gray-500">Bitte einloggen...</div>;
   }
 
   return (
@@ -553,19 +541,6 @@ export default function StudentTutorDashboard() {
               <p className="text-gray-600 mt-1">Verwalten Sie Ihre Tutoren und Kurse</p>
             </div>
             <div className="flex items-center space-x-3">
-              <button
-                onClick={handleRefreshData}
-                disabled={refreshing}
-                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-medium flex items-center transition-colors disabled:opacity-50 relative"
-              >
-                <RefreshCw className={`w-5 h-5 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                {refreshing ? 'Aktualisiere...' : 'Aktualisieren'}
-                {hasNewBookings && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    !
-                  </span>
-                )}
-              </button>
               <button
                 onClick={() => activeTab === 'tutors' ? handleBookNewTutor() : navigate('/courses')}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium flex items-center transition-colors"

@@ -4,6 +4,7 @@ import { body, validationResult } from 'express-validator';
 import { query } from '../database/connection';
 import { generateToken, generateRefreshToken, authenticateToken } from '../middleware/auth';
 import { asyncHandler, AppError, validationError } from '../middleware/errorHandler';
+import passport from 'passport';
 
 const router = express.Router();
 
@@ -295,5 +296,37 @@ router.post('/logout', authenticateToken, asyncHandler(async (req: Request, res:
     message: 'Erfolgreich abgemeldet'
   });
 }));
+
+// Google OAuth Routes
+router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+
+router.get(
+  '/google/callback',
+  passport.authenticate('google', {
+    failureRedirect: '/login',
+    failureMessage: true,
+    session: false, // We are using JWTs, not sessions
+  }),
+  (req: Request, res: Response) => {
+    // On successful authentication, Passport attaches the user to req.user
+    const user: any = req.user;
+
+    // Generate JWT
+    const token = generateToken({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+    });
+    
+    const refreshToken = generateRefreshToken(user.id);
+
+    // Redirect to a dedicated frontend page with the tokens
+    // The frontend will be responsible for storing the tokens
+    res.redirect(
+      `${process.env.FRONTEND_URL}/auth/callback?access_token=${token}&refresh_token=${refreshToken}`
+    );
+  }
+);
 
 export default router;

@@ -328,12 +328,6 @@ export default function CoursesPage() {
                           >
                             Details ansehen
                           </button>
-                          <button
-                            onClick={() => openBookingModal(course)}
-                            className="flex-1 bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md transition-colors"
-                          >
-                            Jetzt buchen
-                          </button>
                           <ComparisonButton
                             item={{
                               id: course.id,

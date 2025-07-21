@@ -503,6 +503,8 @@ export const bookingsApi = {
     apiClient.get<{ courseBookings: CourseBooking[]; pagination: any }>('/bookings/student/courses', params),
   
   getTutorNotifications: (params?: { is_read?: boolean }) =>
+    apiClient.get<{ notifications: Notification[] }>('/bookings/notifications', params),
+  getSchoolNotifications: (params?: { is_read?: boolean }) =>
     apiClient.get<{ notifications: Notification[] }>('/bookings/notifications', params)
 }
 
