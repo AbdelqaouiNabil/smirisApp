@@ -202,12 +202,13 @@ const SchoolDashboard = () => {
 
   const loadNotifications = async () => {
     try {
-      const res = await bookingsApi.getSchoolNotifications({ is_read: false })
-      setNotifications(res.notifications || [])
+      // Fetch all notifications, not just unread
+      const res = await bookingsApi.getSchoolNotifications();
+      setNotifications(res.notifications || []);
     } catch (e) {
       // Optionally handle error
     }
-  }
+  };
 
   const handleAddCourse = async () => {
     if (!newCourse.title || !newCourse.price || !newCourse.startDate) {
@@ -774,6 +775,15 @@ const SchoolDashboard = () => {
     </div>
   )
 
+  const markAllNotificationsAsRead = async () => {
+    try {
+      await bookingsApi.markAllSchoolNotificationsAsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    } catch (e) {
+      // Optionally show a toast
+    }
+  };
+
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center text-xl text-gray-500">Loading...</div>;
   }
@@ -803,7 +813,15 @@ const SchoolDashboard = () => {
             <p className="text-gray-600">School Dashboard - Verwalten Sie Ihre Kurse und Informationen</p>
           </div>
           <div className="relative">
-            <button onClick={() => setShowNotifications((v) => !v)} className="relative">
+            <button
+              onClick={() => {
+                if (!showNotifications) {
+                  markAllNotificationsAsRead();
+                }
+                setShowNotifications((v) => !v);
+              }}
+              className="relative"
+            >
               <Bell className="w-7 h-7 text-gray-700" />
               {notifications.filter(n => !n.is_read).length > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">

@@ -22,6 +22,23 @@ export default function LoginPage() {
   const { login, register, user } = useAuth()
   const navigate = useNavigate()
 
+  // Redirect authenticated users away from login page
+  useEffect(() => {
+    if (user) {
+      if (user.role === 'tutor') {
+        navigate('/tutor-dashboard', { replace: true });
+      } else if (user.role === 'school') {
+        navigate('/school-dashboard', { replace: true });
+      } else if (user.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else if (user.role === 'student') {
+        navigate('/', { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
+    }
+  }, [user, navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -237,8 +254,8 @@ export default function LoginPage() {
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-                <div className="text-sm text-blue-700">{error}</div>
+              <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-2">
+                <div className="text-sm text-red-700 font-semibold">{error}</div>
               </div>
             )}
 
@@ -398,24 +415,19 @@ export default function LoginPage() {
             )}
           </form>
 
-          <div className="mt-4 text-center text-sm">
-            <p className="mb-2">Oder</p>
-            <Button 
-              variant="outline" 
-              className="w-full" 
+          <div className="mt-6">
+            <div className="flex items-center justify-center mb-4">
+              <span className="text-gray-400 text-xs">ODER</span>
+            </div>
+            <Button
+              variant="outline"
+              className="w-full flex items-center justify-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 shadow-sm rounded-lg py-2 text-gray-700 font-medium"
+              style={{ borderColor: '#4285F4' }}
               onClick={() => window.location.href = 'http://localhost:5000/api/auth/google'}
             >
+              <svg width="20" height="20" viewBox="0 0 48 48" className="mr-2"><g><path fill="#4285F4" d="M24 9.5c3.54 0 6.7 1.22 9.19 3.23l6.85-6.85C35.64 2.36 30.13 0 24 0 14.82 0 6.73 5.48 2.69 13.44l7.98 6.2C12.13 13.13 17.62 9.5 24 9.5z"/><path fill="#34A853" d="M46.1 24.5c0-1.64-.15-3.22-.42-4.74H24v9.04h12.42c-.54 2.9-2.18 5.36-4.64 7.04l7.18 5.6C43.93 37.36 46.1 31.36 46.1 24.5z"/><path fill="#FBBC05" d="M10.67 28.04a14.5 14.5 0 010-8.08l-7.98-6.2A23.94 23.94 0 000 24c0 3.77.9 7.34 2.69 10.56l7.98-6.52z"/><path fill="#EA4335" d="M24 48c6.13 0 11.64-2.03 15.52-5.52l-7.18-5.6c-2.01 1.35-4.6 2.12-8.34 2.12-6.38 0-11.87-3.63-14.33-8.88l-7.98 6.52C6.73 42.52 14.82 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></g></svg>
               Mit Google anmelden
             </Button>
-          </div>
-
-          {/* OAuth2 Integration */}
-          <div className="mt-6">
-            <OAuth2Integration
-              onGoogleLogin={handleGoogleLogin}
-              onFacebookLogin={handleFacebookLogin}
-              onGithubLogin={handleGithubLogin}
-            />
           </div>
 
           <div className="mt-4 text-center text-sm">

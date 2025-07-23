@@ -505,8 +505,12 @@ export const bookingsApi = {
   getTutorNotifications: (params?: { is_read?: boolean }) =>
     apiClient.get<{ notifications: Notification[] }>('/bookings/notifications', params),
   getSchoolNotifications: (params?: { is_read?: boolean }) =>
-    apiClient.get<{ notifications: Notification[] }>('/bookings/notifications', params)
-}
+    apiClient.get<{ notifications: Notification[] }>('/bookings/notifications', params),
+  markAllTutorNotificationsAsRead: () =>
+    apiClient.post('/bookings/notifications/mark-all-read', { role: 'tutor' }),
+  markAllSchoolNotificationsAsRead: () =>
+    apiClient.post('/bookings/notifications/mark-all-read', { role: 'school' }),
+};
 
 export const paymentsApi = {
   createIntent: (data: { amount: number; currency: string; booking_id?: number }) =>

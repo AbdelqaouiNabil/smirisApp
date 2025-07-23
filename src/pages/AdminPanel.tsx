@@ -1,11 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../hooks/use-toast";
 import {
   Users,
   School,
   BookOpen,
-  FileText,
   Settings,
   BarChart3,
   Eye,
@@ -23,10 +22,28 @@ import {
   MapPin,
   Mail,
   Phone,
+  X,
+  FileText,
+  Award,
+  Clock,
+  Star,
+  UserCheck,
+  UserX,
+  CheckCircle,
+  XCircle,
+  Maximize2,
+  Download as DownloadIcon,
 } from "lucide-react";
 import { schoolsApi, coursesApi, API_BASE_URL } from "../lib/api";
 import { apiClient } from "../lib/api";
-import { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent } from "../components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardFooter,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "../components/ui/card";
 
 interface AdminStats {
   totalUsers: number;
@@ -37,6 +54,7 @@ interface AdminStats {
   newUsersThisMonth: number;
   activeSchools: number;
   pendingApplications: number;
+  revenueGrowthPercent?: number; // Growth percentage compared to last month
 }
 
 interface PageVisibility {
@@ -80,29 +98,44 @@ interface AdminTutor {
 }
 
 const AdminPanel = () => {
-  const { user, canAccessAdminPanel } = useAuth();
+  const { user, canAccessAdminPanel, isLoading } = useAuth();
   const { toast } = useToast();
 
-  // Helper function to build file URLs
+  // Helper function to build file URLs with cache-busting
   const buildFileUrl = (filePath: string | null | undefined): string | null => {
-    if (!filePath || typeof filePath !== 'string') return null;
+    if (!filePath || typeof filePath !== "string") return null;
 
-    // Remove any leading drive letters or slashes
-    let cleanPath = filePath.replace(/^([A-Za-z]:)?[\\/]+/, '');
+    console.log("🔍 Original file path:", filePath);
 
-    // Ensure it starts with 'uploads/'
-    if (!cleanPath.startsWith('uploads/')) {
-      cleanPath = `uploads/${cleanPath.replace(/^uploads[\\/]/, '')}`;
+    // Extract just the filename from the full path
+    let fileName = filePath;
+
+    // If it's a full path, extract just the filename
+    if (filePath.includes("/") || filePath.includes("\\")) {
+      fileName = filePath.split(/[/\\]/).pop() || filePath;
     }
 
-    return `http://localhost:5000/${cleanPath}`;
+    // Build the correct URL with the backend port
+    const cacheBreaker = Date.now();
+    const finalUrl = `http://localhost:5000/uploads/${fileName}?v=${cacheBreaker}`;
+    console.log("🔗 Built URL with cache-busting:", finalUrl);
+    return finalUrl;
   };
 
-  // Helper function to handle file link clicks with error handling
-  const handleFileClick = (
-    filePath: string | null | undefined,
-    fileName: string
-  ) => {
+  // Modal handlers
+  const openTutorModal = (tutor: AdminTutor) => {
+    setSelectedTutor(tutor);
+    setIsModalOpen(true);
+    setSelectedDocument(null);
+  };
+
+  const closeTutorModal = () => {
+    setSelectedTutor(null);
+    setIsModalOpen(false);
+    setSelectedDocument(null);
+  };
+
+  const openDocument = (filePath: string, fileName: string) => {
     const url = buildFileUrl(filePath);
     if (!url) {
       toast({
@@ -113,17 +146,23 @@ const AdminPanel = () => {
       return;
     }
 
-    // Try to open the file
-    try {
-      window.open(url, "_blank", "noopener,noreferrer");
-    } catch (error) {
-      console.error("Error opening file:", error);
-      toast({
-        title: "Fehler",
-        description: `${fileName} konnte nicht geöffnet werden`,
-        variant: "destructive",
-      });
-    }
+    // Determine document type
+    const extension = fileName.toLowerCase().split(".").pop();
+    const type: "pdf" | "image" = [
+      "jpg",
+      "jpeg",
+      "png",
+      "gif",
+      "webp",
+    ].includes(extension || "")
+      ? "image"
+      : "pdf";
+
+    setSelectedDocument({
+      filePath: url,
+      fileName,
+      type,
+    });
   };
 
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -136,6 +175,7 @@ const AdminPanel = () => {
     newUsersThisMonth: 0,
     activeSchools: 0,
     pendingApplications: 0,
+    revenueGrowthPercent: 0,
   });
 
   const [pageVisibility, setPageVisibility] = useState<PageVisibility>({
@@ -150,15 +190,39 @@ const AdminPanel = () => {
   const [tutors, setTutors] = useState<AdminTutor[]>([]);
   const [schools, setSchools] = useState<any[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRole, setSelectedRole] = useState("all");
   const [tutorSearchTerm, setTutorSearchTerm] = useState("");
   const [selectedVerificationStatus, setSelectedVerificationStatus] =
     useState("all");
-  const [coursePublisherFilter, setCoursePublisherFilter] = useState<'all' | 'tutor' | 'school'>('all');
+  const [coursePublisherFilter, setCoursePublisherFilter] = useState<
+    "all" | "tutor" | "school"
+  >("all");
+
+  // Modal state for tutor details
+  const [selectedTutor, setSelectedTutor] = useState<AdminTutor | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<{
+    filePath: string;
+    fileName: string;
+    type: "pdf" | "image";
+  } | null>(null);
 
   useEffect(() => {
+    console.log("🚀 AdminPanel useEffect triggered");
+    console.log("👤 Current user:", user);
+    console.log("� Auth loading:", isLoading);
+    console.log("🔒 Can access admin panel:", canAccessAdminPanel());
+
+    // Wait for authentication to complete before checking access
+    if (isLoading) {
+      console.log("⏳ Still loading authentication, waiting...");
+      return;
+    }
+
     if (!canAccessAdminPanel()) {
+      console.log("❌ Access denied - not loading admin data");
       toast({
         title: "Zugriff verweigert",
         description: "Sie haben keine Berechtigung für das Admin-Panel",
@@ -166,104 +230,10 @@ const AdminPanel = () => {
       });
       return;
     }
-    loadAdminData();
-  }, []); // Remove dependencies to prevent infinite loop
 
-  const loadAdminData = async () => {
-    try {
-      // Fetch real admin dashboard stats
-      const response = (await apiClient.get("/admin/dashboard")) as any;
-      const overview = response.overview || {};
-      setStats({
-        totalUsers: overview.total_users || 0,
-        totalSchools: overview.total_schools || 0,
-        totalCourses: overview.total_courses || 0,
-        totalBookings: overview.total_bookings || 0,
-        monthlyRevenue: overview.total_revenue || 0,
-        newUsersThisMonth: 0, // You can add this from response.growth if needed
-        activeSchools: overview.total_schools || 0, // Adjust if you have active/inactive
-        pendingApplications: 0, // Add from response if available
-      });
-      // Fetch real users for the Benutzer tab
-      const usersRes = (await apiClient.get("/admin/users")) as any;
-      const realUsers = (usersRes.users || []).map((u: any) => ({
-        id: u.id,
-        name: u.name,
-        email: u.email,
-        role: u.role,
-        registrationDate: u.created_at,
-        lastLogin: u.last_login,
-        status: u.is_active ? "active" : "inactive",
-        city: u.location || "",
-        whatsappNumber: u.whatsappNumber || "",
-      }));
-      setUsers(realUsers);
-
-      // Fetch tutors specifically for the Tutors tab
-      const tutorsRes = (await apiClient.get("/admin/tutors")) as any;
-      const realTutors = (tutorsRes.tutors || []).map((t: any) => ({
-        id: t.id,
-        name: t.name,
-        email: t.email,
-        registrationDate: t.created_at,
-        lastLogin: t.last_login,
-        status: t.is_active ? "active" : "inactive",
-        city: t.location || "",
-        isVerified: t.is_verified || false,
-        experienceYears: t.experience_years,
-        hourlyRate: t.hourly_rate,
-        specializations: t.specializations || [],
-        languages: t.languages || "",
-        totalStudents: t.total_students || 0,
-        rating:
-          typeof t.rating === "string"
-            ? parseFloat(t.rating) || 0
-            : t.rating || 0,
-        profile_photo: t.profile_photo || null,
-        cv_file_path: t.cv_file_path || null,
-        certificate_files: t.certificate_files
-          ? Array.isArray(t.certificate_files)
-            ? t.certificate_files
-            : typeof t.certificate_files === "string"
-            ? JSON.parse(t.certificate_files)
-            : []
-          : null,
-      }));
-      setTutors(realTutors);
-
-      // Fetch real schools for the Schulen tab
-      const schoolsRes = (await apiClient.get("/schools")) as any;
-      const realSchools = (schoolsRes.schools || []).map((s: any) => ({
-        id: s.id,
-        name: s.name,
-        location: s.location,
-        email: s.email,
-        phone: s.phone,
-        isActive: s.is_verified || s.is_active,
-      }));
-      setSchools(realSchools);
-      // Fetch real courses for the Kurse tab
-      const coursesRes = (await apiClient.get("/courses")) as any;
-      const realCourses = (coursesRes.courses || []).map((c: any) => ({
-        id: c.id,
-        title: c.title,
-        description: c.description,
-        price: c.price,
-        category: c.category,
-        tutor_id: c.tutor_id,
-        school_id: c.school_id,
-      }));
-      setCourses(realCourses);
-      // Optionally, set other state from response (recentActivity, etc.)
-    } catch (error) {
-      console.error("Error loading admin data:", error);
-      toast({
-        title: "Fehler",
-        description: "Fehler beim Laden der Admin-Daten",
-        variant: "destructive",
-      });
-    }
-  };
+    console.log("✅ Access granted - admin panel ready");
+    // TODO: Add loadAdminData function if needed
+  }, [user, isLoading, canAccessAdminPanel, toast]); // Only include stable dependencies
 
   const togglePageVisibility = (page: keyof PageVisibility) => {
     const newVisibility = {
@@ -380,6 +350,29 @@ const AdminPanel = () => {
       });
     }
   };
+
+  const handleDeleteTutor = async (id: string) => {
+    if (!window.confirm("Möchten Sie diesen Tutor wirklich löschen?")) return;
+    try {
+      await apiClient.delete(`/admin/users/${id}`); // Uses the user ID from backend
+      setTutors((prev) => prev.filter((t) => t.id !== id));
+      toast({
+        title: "Tutor gelöscht",
+        description: "Der Tutor wurde erfolgreich entfernt.",
+      });
+    } catch (error: any) {
+      console.error("Error deleting tutor:", error);
+      toast({
+        title: "Fehler beim Löschen des Tutors",
+        description:
+          error.response?.data?.message ||
+          error.message ||
+          "Unbekannter Fehler",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleDeleteSchool = async (id: number) => {
     if (!window.confirm("Möchten Sie diese Schule wirklich löschen?")) return;
     try {
@@ -583,46 +576,441 @@ const AdminPanel = () => {
     }
   };
 
-  // Test function to check if backend file serving is working
-  const testFileAccess = async () => {
-    // Test with an actual file from the server
-    const testPaths = [
-      "uploads/cv-1752704722135-317572079.pdf",
-      "uploads/certificates-1752704722143-737316312.pdf",
-      "uploads/photo-1752704722127-435039854.png",
-    ];
+  // TutorDetailModal Component
+  const TutorDetailModal = () => {
+    if (!selectedTutor || !isModalOpen) return null;
 
-    for (const testPath of testPaths) {
-      const testUrl = buildFileUrl(testPath);
-      console.log("Testing file access with URL:", testUrl);
+    return (
+      <div className="fixed inset-0 z-50 overflow-hidden">
+        {/* Backdrop */}
+        <div
+          className="absolute inset-0 bg-black bg-opacity-50"
+          onClick={closeTutorModal}
+        ></div>
 
-      try {
-        const response = await fetch(testUrl, { method: "HEAD" });
-        console.log(
-          `File access test result for ${testPath}:`,
-          response.status
-        );
+        {/* Modal */}
+        <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-7xl w-full max-h-[95vh] overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b bg-gray-50">
+              <div className="flex items-center space-x-4">
+                {selectedTutor.profile_photo ? (
+                  <img
+                    src={buildFileUrl(selectedTutor.profile_photo)}
+                    alt={selectedTutor.name}
+                    className="w-12 h-12 rounded-full object-cover border-2 border-green-400"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = "none";
+                    }}
+                  />
+                ) : (
+                  <div className="w-12 h-12 bg-green-200 rounded-full flex items-center justify-center text-green-700 font-bold text-xl">
+                    {selectedTutor.name.charAt(0)}
+                  </div>
+                )}
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {selectedTutor.name}
+                  </h2>
+                  <p className="text-gray-600">{selectedTutor.email}</p>
+                </div>
+              </div>
+              <button
+                onClick={closeTutorModal}
+                className="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-200 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
 
-        if (response.ok) {
-          toast({
-            title: "Erfolg",
-            description: `Datei-Server ist erreichbar (${testPath})`,
-            variant: "default",
-          });
-          break; // If one file works, they should all work
-        } else {
-          console.log(`File ${testPath} returned status: ${response.status}`);
-        }
-      } catch (error) {
-        console.error(`File access test failed for ${testPath}:`, error);
-      }
-    }
+            {/* Content */}
+            <div className="flex h-[calc(95vh-120px)]">
+              {/* Left Panel - Tutor Info */}
+              <div className="w-1/2 p-6 overflow-y-auto border-r">
+                {/* Basic Information */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    📊 Grundinformationen
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <div className="text-sm text-gray-600">Status</div>
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          selectedTutor.status === "active"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {selectedTutor.status === "active"
+                          ? "Aktiv"
+                          : "Inaktiv"}
+                      </span>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <div className="text-sm text-gray-600">Verifizierung</div>
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          selectedTutor.isVerified
+                            ? "bg-green-100 text-green-800"
+                            : "bg-yellow-100 text-yellow-800"
+                        }`}
+                      >
+                        {selectedTutor.isVerified
+                          ? "Verifiziert"
+                          : "Nicht verifiziert"}
+                      </span>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <div className="text-sm text-gray-600">Erfahrung</div>
+                      <div className="font-semibold">
+                        {selectedTutor.experienceYears || 0} Jahre
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <div className="text-sm text-gray-600">Stundensatz</div>
+                      <div className="font-semibold">
+                        {selectedTutor.hourlyRate || 0} MAD/h
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <div className="text-sm text-gray-600">Studenten</div>
+                      <div className="font-semibold">
+                        {selectedTutor.totalStudents || 0}
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <div className="text-sm text-gray-600">Bewertung</div>
+                      <div className="font-semibold flex items-center">
+                        <Star className="w-4 h-4 text-yellow-400 mr-1" />
+                        {typeof selectedTutor.rating === "number"
+                          ? selectedTutor.rating.toFixed(1)
+                          : parseFloat(selectedTutor.rating || "0").toFixed(1)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-    toast({
-      title: "Test abgeschlossen",
-      description: "Siehe Browser-Konsole für Details",
-      variant: "default",
-    });
+                {/* Additional Info */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    📍 Zusätzliche Informationen
+                  </h3>
+                  <div className="space-y-3">
+                    {selectedTutor.city && (
+                      <div className="flex items-center">
+                        <MapPin className="w-4 h-4 text-gray-500 mr-2" />
+                        <span className="text-gray-700">
+                          {selectedTutor.city}
+                        </span>
+                      </div>
+                    )}
+                    {selectedTutor.languages && (
+                      <div className="flex items-start">
+                        <div className="text-sm text-gray-600 w-20 flex-shrink-0">
+                          Sprachen:
+                        </div>
+                        <div className="text-gray-700">
+                          {selectedTutor.languages}
+                        </div>
+                      </div>
+                    )}
+                    {selectedTutor.specializations &&
+                      selectedTutor.specializations.length > 0 && (
+                        <div className="flex items-start">
+                          <div className="text-sm text-gray-600 w-20 flex-shrink-0">
+                            Fächer:
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {selectedTutor.specializations.map((spec, idx) => (
+                              <span
+                                key={idx}
+                                className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full"
+                              >
+                                {spec}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    <div className="flex items-center">
+                      <Calendar className="w-4 h-4 text-gray-500 mr-2" />
+                      <span className="text-gray-700">
+                        Registriert:{" "}
+                        {new Date(
+                          selectedTutor.registrationDate
+                        ).toLocaleDateString("de-DE")}
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <Clock className="w-4 h-4 text-gray-500 mr-2" />
+                      <span className="text-gray-700">
+                        Letzter Login:{" "}
+                        {new Date(selectedTutor.lastLogin).toLocaleDateString(
+                          "de-DE"
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Documents Section */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    📂 Dokumente
+                  </h3>
+                  <div className="space-y-2">
+                    {/* CV */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <FileText className="w-5 h-5 text-blue-600 mr-2" />
+                          <span className="font-medium text-blue-900">
+                            Lebenslauf (CV)
+                          </span>
+                        </div>
+                        {selectedTutor.cv_file_path ? (
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() =>
+                                openDocument(
+                                  selectedTutor.cv_file_path!,
+                                  "Lebenslauf.pdf"
+                                )
+                              }
+                              className="text-blue-600 hover:text-blue-800 p-1 rounded"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() =>
+                                window.open(
+                                  buildFileUrl(selectedTutor.cv_file_path!)!,
+                                  "_blank"
+                                )
+                              }
+                              className="text-blue-600 hover:text-blue-800 p-1 rounded"
+                            >
+                              <DownloadIcon className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-sm">
+                            Nicht verfügbar
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Certificates */}
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center">
+                          <Award className="w-5 h-5 text-green-600 mr-2" />
+                          <span className="font-medium text-green-900">
+                            Zertifikate
+                          </span>
+                        </div>
+                      </div>
+                      {selectedTutor.certificate_files &&
+                      selectedTutor.certificate_files.length > 0 ? (
+                        <div className="space-y-2">
+                          {selectedTutor.certificate_files.map((file, idx) => {
+                            if (typeof file !== "string") return null;
+                            const fileName = `Zertifikat ${idx + 1}`;
+                            return (
+                              <div
+                                key={idx}
+                                className="flex items-center justify-between bg-white p-2 rounded border"
+                              >
+                                <span className="text-sm text-gray-700">
+                                  {fileName}
+                                </span>
+                                <div className="flex space-x-2">
+                                  <button
+                                    onClick={() =>
+                                      openDocument(file, `${fileName}.pdf`)
+                                    }
+                                    className="text-green-600 hover:text-green-800 p-1 rounded"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      window.open(buildFileUrl(file)!, "_blank")
+                                    }
+                                    className="text-green-600 hover:text-green-800 p-1 rounded"
+                                  >
+                                    <DownloadIcon className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-sm">
+                          Keine Zertifikate verfügbar
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Profile Photo */}
+                    {selectedTutor.profile_photo && (
+                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <div className="w-5 h-5 text-purple-600 mr-2">
+                              📷
+                            </div>
+                            <span className="font-medium text-purple-900">
+                              Profilbild
+                            </span>
+                          </div>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() =>
+                                openDocument(
+                                  selectedTutor.profile_photo!,
+                                  "Profilbild.jpg"
+                                )
+                              }
+                              className="text-purple-600 hover:text-purple-800 p-1 rounded"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() =>
+                                window.open(
+                                  buildFileUrl(selectedTutor.profile_photo!)!,
+                                  "_blank"
+                                )
+                              }
+                              className="text-purple-600 hover:text-purple-800 p-1 rounded"
+                            >
+                              <DownloadIcon className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    onClick={() => handleToggleTutorVerification(selectedTutor)}
+                    className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      selectedTutor.isVerified
+                        ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
+                        : "bg-green-100 text-green-800 hover:bg-green-200"
+                    }`}
+                  >
+                    {selectedTutor.isVerified ? (
+                      <>
+                        <UserX className="w-4 h-4 mr-2" />
+                        Deverifizieren
+                      </>
+                    ) : (
+                      <>
+                        <UserCheck className="w-4 h-4 mr-2" />
+                        Verifizieren
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleToggleTutorStatus(selectedTutor)}
+                    className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      selectedTutor.status === "active"
+                        ? "bg-red-100 text-red-800 hover:bg-red-200"
+                        : "bg-green-100 text-green-800 hover:bg-green-200"
+                    }`}
+                  >
+                    {selectedTutor.status === "active" ? (
+                      <>
+                        <XCircle className="w-4 h-4 mr-2" />
+                        Deaktivieren
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Aktivieren
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          "Möchten Sie diesen Tutor wirklich löschen?"
+                        )
+                      ) {
+                        handleDeleteTutor(selectedTutor.id);
+                        closeTutorModal();
+                      }
+                    }}
+                    className="flex items-center px-4 py-2 bg-red-100 text-red-800 hover:bg-red-200 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Löschen
+                  </button>
+                </div>
+              </div>
+
+              {/* Right Panel - Document Viewer */}
+              <div className="w-1/2 bg-gray-50 flex flex-col">
+                {selectedDocument ? (
+                  <>
+                    {/* Document Header */}
+                    <div className="p-4 border-b bg-white flex items-center justify-between">
+                      <h4 className="font-medium text-gray-900">
+                        {selectedDocument.fileName}
+                      </h4>
+                      <button
+                        onClick={() => setSelectedDocument(null)}
+                        className="text-gray-400 hover:text-gray-600 p-1 rounded"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Document Content */}
+                    <div className="flex-1 p-4">
+                      {selectedDocument.type === "image" ? (
+                        <img
+                          src={selectedDocument.filePath}
+                          alt={selectedDocument.fileName}
+                          className="max-w-full h-auto rounded-lg shadow-md"
+                        />
+                      ) : (
+                        <iframe
+                          src={selectedDocument.filePath}
+                          className="w-full h-full border-0 rounded-lg shadow-md"
+                          title={selectedDocument.fileName}
+                        />
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="text-center text-gray-500">
+                      <FileText className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                      <p className="text-lg mb-2">Kein Dokument ausgewählt</p>
+                      <p className="text-sm">
+                        Klicken Sie auf ein Dokument links, um es hier
+                        anzuzeigen
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const renderDashboardTab = () => (
@@ -690,40 +1078,82 @@ const AdminPanel = () => {
             </div>
             <TrendingUp className="w-8 h-8 text-orange-600" />
           </div>
-          <p className="text-orange-600 text-sm mt-2">+12% vs. letzter Monat</p>
+          <p className="text-orange-600 text-sm mt-2">
+            {stats.revenueGrowthPercent !== undefined
+              ? `${
+                  stats.revenueGrowthPercent >= 0 ? "+" : ""
+                }${stats.revenueGrowthPercent.toFixed(1)}% vs. letzter Monat`
+              : "Keine Daten verfügbar"}
+          </p>
         </div>
       </div>
 
       {/* Recent Activity */}
       <div className="bg-white rounded-lg shadow p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Letzte Aktivitäten
+          Letzte Aktivitäten (Buchungen)
         </h3>
         <div className="space-y-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <p className="text-gray-700">
-              Neue Schule registriert: Atlas Sprachzentrum Marrakech
-            </p>
-            <span className="text-gray-500 text-sm">vor 2 Stunden</span>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-            <p className="text-gray-700">15 neue Studenten-Anmeldungen heute</p>
-            <span className="text-gray-500 text-sm">vor 3 Stunden</span>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-            <p className="text-gray-700">42 Kursbuchungen in den letzten 24h</p>
-            <span className="text-gray-500 text-sm">vor 5 Stunden</span>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-            <p className="text-gray-700">
-              System-Backup erfolgreich abgeschlossen
-            </p>
-            <span className="text-gray-500 text-sm">vor 8 Stunden</span>
-          </div>
+          {recentActivity.length > 0 ? (
+            recentActivity.slice(0, 5).map((activity, index) => {
+              const date = new Date(activity.booking_date);
+              const daysAgo = Math.floor(
+                (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24)
+              );
+              return (
+                <div key={index} className="flex items-center space-x-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <p className="text-gray-700">
+                    {activity.booking_count} Buchung
+                    {activity.booking_count !== 1 ? "en" : ""}
+                    {activity.daily_revenue &&
+                      ` (${parseFloat(
+                        activity.daily_revenue
+                      ).toLocaleString()} MAD)`}
+                  </p>
+                  <span className="text-gray-500 text-sm">
+                    {daysAgo === 0
+                      ? "heute"
+                      : daysAgo === 1
+                      ? "gestern"
+                      : `vor ${daysAgo} Tagen`}
+                  </span>
+                </div>
+              );
+            })
+          ) : (
+            // Fallback to static data if no recent activity
+            <>
+              <div className="flex items-center space-x-3">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <p className="text-gray-700">
+                  Neue Schule registriert: Atlas Sprachzentrum Marrakech
+                </p>
+                <span className="text-gray-500 text-sm">vor 2 Stunden</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <p className="text-gray-700">
+                  15 neue Studenten-Anmeldungen heute
+                </p>
+                <span className="text-gray-500 text-sm">vor 3 Stunden</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                <p className="text-gray-700">
+                  42 Kursbuchungen in den letzten 24h
+                </p>
+                <span className="text-gray-500 text-sm">vor 5 Stunden</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                <p className="text-gray-700">
+                  System-Backup erfolgreich abgeschlossen
+                </p>
+                <span className="text-gray-500 text-sm">vor 8 Stunden</span>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -968,9 +1398,10 @@ const AdminPanel = () => {
   const renderCoursesTab = () => {
     // Filter courses by publisher type
     const filteredCourses = courses.filter((course: any) => {
-      if (coursePublisherFilter === 'all') return true;
-      if (coursePublisherFilter === 'tutor') return !!course.tutor_id;
-      if (coursePublisherFilter === 'school') return !!course.school_id && !course.tutor_id;
+      if (coursePublisherFilter === "all") return true;
+      if (coursePublisherFilter === "tutor") return !!course.tutor_id;
+      if (coursePublisherFilter === "school")
+        return !!course.school_id && !course.tutor_id;
       return true;
     });
     return (
@@ -981,7 +1412,11 @@ const AdminPanel = () => {
           <select
             className="border rounded px-2 py-1"
             value={coursePublisherFilter}
-            onChange={e => setCoursePublisherFilter(e.target.value as 'all' | 'tutor' | 'school')}
+            onChange={(e) =>
+              setCoursePublisherFilter(
+                e.target.value as "all" | "tutor" | "school"
+              )
+            }
           >
             <option value="all">Alle</option>
             <option value="tutor">Von Tutoren</option>
@@ -990,14 +1425,19 @@ const AdminPanel = () => {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
           {filteredCourses.map((course: any) => (
-            <Card key={course.id} className="flex flex-col justify-between h-full">
+            <Card
+              key={course.id}
+              className="flex flex-col justify-between h-full"
+            >
               <CardHeader>
                 <CardTitle>{course.title}</CardTitle>
                 <CardDescription>{course.category}</CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="mb-2 text-gray-700">{course.description}</p>
-                <p className="font-semibold text-blue-700">{course.price} MAD</p>
+                <p className="font-semibold text-blue-700">
+                  {course.price} MAD
+                </p>
               </CardContent>
               <CardFooter className="flex justify-end space-x-2">
                 <button className="text-blue-600 hover:text-blue-900">
@@ -1015,7 +1455,9 @@ const AdminPanel = () => {
                 </button>
                 <button
                   className="text-red-600 hover:text-red-900"
-                  onClick={() => handleDeleteCourse(course.id, !!course.tutor_id)}
+                  onClick={() =>
+                    handleDeleteCourse(course.id, !!course.tutor_id)
+                  }
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -1036,12 +1478,6 @@ const AdminPanel = () => {
             Tutoren Verwaltung
           </h2>
           <div className="flex items-center space-x-4">
-            <button
-              onClick={testFileAccess}
-              className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-            >
-              🔧 Test Dateien
-            </button>
             <button
               onClick={exportTutorData}
               className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
@@ -1080,41 +1516,82 @@ const AdminPanel = () => {
           {filteredTutors.map((tutor) => (
             <div
               key={tutor.id}
-              className="bg-white rounded-xl shadow-md p-6 flex flex-col justify-between hover:shadow-lg transition-shadow"
+              className="bg-white rounded-xl shadow-md p-6 flex flex-col justify-between hover:shadow-lg transition-all duration-200 min-h-[500px] cursor-pointer relative group border-2 border-transparent hover:border-blue-200"
+              onClick={() => openTutorModal(tutor)}
             >
-              <div className="flex items-center mb-4">
+              {/* Click overlay indicator */}
+              <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="bg-blue-100 text-blue-600 p-2 rounded-full shadow-lg">
+                  <Maximize2 className="w-4 h-4" />
+                </div>
+              </div>
+
+              {/* Clickable indicator text */}
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium">
+                  Klicken für Details
+                </div>
+              </div>
+              {/* Header with Profile Photo and Basic Info */}
+              <div className="flex flex-col items-center mb-4">
                 {tutor.profile_photo ? (
-                  <img
-                    src={buildFileUrl(tutor.profile_photo)}
-                    alt="Profilfoto"
-                    className="w-12 h-12 rounded-full object-cover border-2 border-green-400 cursor-pointer"
-                    onClick={() =>
-                      handleFileClick(tutor.profile_photo, "Profilfoto")
-                    }
-                    onError={(e) => {
-                      console.log("Image failed to load:", tutor.profile_photo);
-                      const target = e.target as HTMLImageElement;
-                      // Use a data URL as fallback to prevent infinite loops
-                      const defaultAvatar =
-                        "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNFNUU3RUIiLz4KPHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeD0iOCIgeT0iOCI+CjxwYXRoIGQ9Ik0xMiAyQzEzLjEgMiAxNCAyLjkgMTQgNEMxNCA1LjEgMTMuMSA2IDEyIDZDMTAuOSA2IDEwIDUuMSAxMCA0QzEwIDIuOSAxMC45IDIgMTIgMloiIGZpbGw9IiM5Q0EzQUYiLz4KPHN0eWxlPi5zdDB7ZmlsbDojOUNBM0FGO308L3N0eWxlPgo8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMjEgMjJWMjBDMjEgMTcuNzkgMTkuMjEgMTYgMTcgMTZIN0M0Ljc5IDE2IDMgMTcuNzkgMyAyMFYyMkgyMVoiLz4KPC9zdmc+Cjwvc3ZnPg==";
-                      if (!target.dataset.fallbackUsed) {
-                        target.dataset.fallbackUsed = "true";
-                        target.src = defaultAvatar;
-                      }
-                    }}
-                  />
+                  <div className="relative">
+                    <img
+                      src={buildFileUrl(tutor.profile_photo)}
+                      alt="Profilfoto"
+                      className="w-20 h-20 rounded-full object-cover border-3 border-green-400 cursor-pointer mb-3 hover:border-green-500 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        console.log(
+                          `🔍 Profile photo click for ${tutor.name}:`,
+                          tutor.profile_photo
+                        );
+                        openTutorModal(tutor);
+                      }}
+                      onError={(e) => {
+                        console.log(
+                          `❌ Image failed to load for ${tutor.name}:`,
+                          tutor.profile_photo
+                        );
+                        const target = e.target as HTMLImageElement;
+                        // Use a data URL as fallback to prevent infinite loops
+                        const defaultAvatar =
+                          "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iNDAiIGZpbGw9IiNFNUU3RUIiLz4KPHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeD0iMjAiIHk9IjIwIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIxNSIgcj0iOCIgZmlsbD0iIzlDQTNBRiIvPgo8cGF0aCBkPSJNMzUgMzVWMzJDMzUgMjcuNTggMzEuNDIgMjQgMjcgMjRIMTNDOC41OCAyNCA1IDI3LjU4IDUgMzJWMzVIMzVaIiBmaWxsPSIjOUNBM0FGIi8+Cjwvc3ZnPgo8L3N2Zz4KPC9zdmc+";
+                        if (!target.dataset.fallbackUsed) {
+                          target.dataset.fallbackUsed = "true";
+                          target.src = defaultAvatar;
+                        }
+                      }}
+                      onLoad={() => {
+                        console.log(
+                          `✅ Profile photo loaded successfully for ${tutor.name}`
+                        );
+                      }}
+                    />
+                    <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white text-xs">
+                      📷
+                    </div>
+                  </div>
                 ) : (
-                  <div className="w-12 h-12 bg-green-200 rounded-full flex items-center justify-center text-xl font-bold text-green-700">
-                    {tutor.name.charAt(0)}
+                  <div className="relative">
+                    <div className="w-20 h-20 bg-green-200 rounded-full flex items-center justify-center text-2xl font-bold text-green-700 mb-3 border-3 border-green-300">
+                      {tutor.name.charAt(0)}
+                    </div>
+                    <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs">
+                      👤
+                    </div>
                   </div>
                 )}
-                <div className="ml-4">
-                  <div className="text-lg font-semibold text-gray-900">
+                <div className="text-center">
+                  <div className="text-lg font-semibold text-gray-900 mb-1">
                     {tutor.name}
                   </div>
-                  <div className="text-sm text-gray-500">{tutor.email}</div>
+                  <div className="text-sm text-gray-500 mb-2 flex items-center justify-center">
+                    <Mail className="w-3 h-3 mr-1" />
+                    {tutor.email}
+                  </div>
                   {tutor.city && (
-                    <div className="text-xs text-gray-400 flex items-center">
+                    <div className="text-xs text-gray-400 flex items-center justify-center">
                       <MapPin className="w-3 h-3 mr-1" />
                       {tutor.city}
                     </div>
@@ -1122,36 +1599,87 @@ const AdminPanel = () => {
                 </div>
               </div>
               {/* Tutor Files Section */}
-              <div className="mb-4 space-y-1">
-                {tutor.cv_file_path && (
+              <div className="mb-4 space-y-1 bg-gray-50 p-3 rounded-lg">
+                <div className="text-xs font-semibold text-gray-700 mb-2">
+                  📂 Dokumente:
+                </div>
+
+                {/* CV Section */}
+                {tutor.cv_file_path ? (
                   <button
-                    onClick={() =>
-                      handleFileClick(tutor.cv_file_path, "Lebenslauf")
-                    }
-                    className="block text-blue-600 hover:underline text-xs hover:bg-blue-50 px-2 py-1 rounded transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      console.log(
+                        `🔍 CV access for ${tutor.name}:`,
+                        tutor.cv_file_path
+                      );
+                      openTutorModal(tutor);
+                    }}
+                    className="w-full text-left text-blue-600 hover:underline text-xs hover:bg-blue-50 px-2 py-1 rounded transition-colors border border-blue-200"
                   >
                     📄 Lebenslauf ansehen
                   </button>
+                ) : (
+                  <div className="text-xs text-gray-400 px-2 py-1">
+                    📄 Kein Lebenslauf verfügbar
+                  </div>
                 )}
+
+                {/* Certificates Section */}
                 {tutor.certificate_files &&
-                  tutor.certificate_files.length > 0 && (
-                    <div className="flex flex-col space-y-1">
-                      {tutor.certificate_files.map((file, idx) => {
-                        if (typeof file !== "string") return null;
-                        return (
-                          <button
-                            key={idx}
-                            onClick={() =>
-                              handleFileClick(file, `Zertifikat ${idx + 1}`)
-                            }
-                            className="text-left text-purple-600 hover:underline text-xs hover:bg-purple-50 px-2 py-1 rounded transition-colors"
-                          >
-                            🏆 Zertifikat {idx + 1} ansehen
-                          </button>
+                tutor.certificate_files.length > 0 ? (
+                  <div className="space-y-1">
+                    <div className="text-xs text-gray-600">Zertifikate:</div>
+                    {tutor.certificate_files.map((file, idx) => {
+                      if (typeof file !== "string") {
+                        console.log(
+                          `⚠️ Invalid certificate file for ${tutor.name}:`,
+                          file
                         );
-                      })}
-                    </div>
-                  )}
+                        return null;
+                      }
+                      return (
+                        <button
+                          key={idx}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            console.log(
+                              `🔍 Certificate ${idx + 1} access for ${
+                                tutor.name
+                              }:`,
+                              file
+                            );
+                            openTutorModal(tutor);
+                          }}
+                          className="w-full text-left text-purple-600 hover:underline text-xs hover:bg-purple-50 px-2 py-1 rounded transition-colors border border-purple-200"
+                        >
+                          🏆 Zertifikat {idx + 1} ansehen
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-xs text-gray-400 px-2 py-1">
+                    🏆 Keine Zertifikate verfügbar
+                  </div>
+                )}
+
+                {/* Profile Photo Section (if different from header photo) */}
+                {tutor.profile_photo && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      console.log(
+                        `🔍 Profile photo access for ${tutor.name}:`,
+                        tutor.profile_photo
+                      );
+                      openTutorModal(tutor);
+                    }}
+                    className="w-full text-left text-green-600 hover:underline text-xs hover:bg-green-50 px-2 py-1 rounded transition-colors border border-green-200"
+                  >
+                    🖼️ Profilbild in Vollansicht
+                  </button>
+                )}
               </div>
               <div className="flex flex-wrap gap-2 mb-4">
                 <span
@@ -1167,7 +1695,7 @@ const AdminPanel = () => {
                   {tutor.experienceYears || 0} Jahre Erfahrung
                 </span>
                 <span className="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
-                  {tutor.hourlyRate || 0} €/h
+                  {tutor.hourlyRate || 0} MAD/h
                 </span>
                 <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800">
                   {tutor.totalStudents || 0} Studenten
@@ -1186,21 +1714,67 @@ const AdminPanel = () => {
                       ? "bg-green-100 text-green-800"
                       : tutor.status === "pending"
                       ? "bg-yellow-100 text-yellow-800"
-                      : "bg-red-100"
+                      : "bg-red-100 text-red-800"
                   }`}
                 >
                   {tutor.status}
                 </span>
               </div>
+
+              {/* Additional Tutor Information */}
+              <div className="mb-4 space-y-2">
+                {tutor.languages && (
+                  <div className="text-xs text-gray-600">
+                    <span className="font-medium">Sprachen:</span>{" "}
+                    {tutor.languages}
+                  </div>
+                )}
+                {tutor.specializations && tutor.specializations.length > 0 && (
+                  <div className="text-xs text-gray-600">
+                    <span className="font-medium">Spezialisierungen:</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {tutor.specializations.map((spec, idx) => (
+                        <span
+                          key={idx}
+                          className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs"
+                        >
+                          {spec}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {tutor.registrationDate && (
+                  <div className="text-xs text-gray-500 flex items-center">
+                    <Calendar className="w-3 h-3 mr-1" />
+                    Registriert:{" "}
+                    {new Date(tutor.registrationDate).toLocaleDateString(
+                      "de-DE"
+                    )}
+                  </div>
+                )}
+                {tutor.lastLogin && (
+                  <div className="text-xs text-gray-500">
+                    Letzter Login:{" "}
+                    {new Date(tutor.lastLogin).toLocaleDateString("de-DE")}
+                  </div>
+                )}
+              </div>
               <div className="flex items-center space-x-2 mt-auto">
-                <button className="text-blue-600 hover:text-blue-900">
+                <button
+                  className="text-blue-600 hover:text-blue-900"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <Edit className="w-4 h-4" />
                 </button>
                 <button
                   className={`hover:text-green-900 ${
                     tutor.isVerified ? "text-green-600" : "text-yellow-600"
                   }`}
-                  onClick={() => handleToggleTutorVerification(tutor)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleTutorVerification(tutor);
+                  }}
                   title={
                     tutor.isVerified
                       ? "Verifizierung entfernen"
@@ -1211,7 +1785,10 @@ const AdminPanel = () => {
                 </button>
                 <button
                   className="text-gray-600 hover:text-gray-900"
-                  onClick={() => handleToggleTutorStatus(tutor)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleTutorStatus(tutor);
+                  }}
                 >
                   {tutor.status === "active" ? (
                     <EyeOff className="w-4 h-4" />
@@ -1221,7 +1798,10 @@ const AdminPanel = () => {
                 </button>
                 <button
                   className="text-red-600 hover:text-red-900"
-                  onClick={() => handleDeleteUser(tutor.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteTutor(tutor.id);
+                  }}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -1285,79 +1865,115 @@ const AdminPanel = () => {
 
   return (
     <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Admin-Panel</h1>
+      {/* Tutor Detail Modal */}
+      <TutorDetailModal />
 
-      {/* Tabs */}
-      <div className="flex border-b border-gray-200 mb-6">
-        <button
-          onClick={() => setActiveTab("dashboard")}
-          className={`py-4 px-6 border-b-2 font-medium text-lg ${
-            activeTab === "dashboard"
-              ? "border-blue-600 text-blue-600"
-              : "border-transparent text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Dashboard
-        </button>
-        <button
-          onClick={() => setActiveTab("users")}
-          className={`py-4 px-6 border-b-2 font-medium text-lg ${
-            activeTab === "users"
-              ? "border-blue-600 text-blue-600"
-              : "border-transparent text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Benutzerverwaltung
-        </button>
-        <button
-          onClick={() => setActiveTab("tutors")}
-          className={`py-4 px-6 border-b-2 font-medium text-lg ${
-            activeTab === "tutors"
-              ? "border-blue-600 text-blue-600"
-              : "border-transparent text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Tutoren
-        </button>
-        <button
-          onClick={() => setActiveTab("schools")}
-          className={`py-4 px-6 border-b-2 font-medium text-lg ${
-            activeTab === "schools"
-              ? "border-blue-600 text-blue-600"
-              : "border-transparent text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Schulen
-        </button>
-        <button
-          onClick={() => setActiveTab("courses")}
-          className={`py-4 px-6 border-b-2 font-medium text-lg ${
-            activeTab === "courses"
-              ? "border-blue-600 text-blue-600"
-              : "border-transparent text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Kurse
-        </button>
-        <button
-          onClick={() => setActiveTab("visaServices")}
-          className={`py-4 px-6 border-b-2 font-medium text-lg ${
-            activeTab === "visaServices"
-              ? "border-blue-600 text-blue-600"
-              : "border-transparent text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Visa-Dienste
-        </button>
-      </div>
+      {/* Show loading spinner while authentication is in progress */}
+      {isLoading && (
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Authentifizierung wird überprüft...</p>
+          </div>
+        </div>
+      )}
 
-      {/* Content based on active tab */}
-      {activeTab === "dashboard" && renderDashboardTab()}
-      {activeTab === "users" && renderUsersTab()}
-      {activeTab === "tutors" && renderTutorsTab()}
-      {activeTab === "schools" && renderSchoolsTab()}
-      {activeTab === "courses" && renderCoursesTab()}
-      {activeTab === "visaServices" && renderVisaServicesTab()}
+      {/* Show admin panel only when authentication is complete and user has access */}
+      {!isLoading && canAccessAdminPanel() && (
+        <>
+          <h1 className="text-3xl font-bold text-gray-900 mb-6">Admin-Panel</h1>
+
+          {/* Tabs */}
+          <div className="flex border-b border-gray-200 mb-6">
+            <button
+              onClick={() => setActiveTab("dashboard")}
+              className={`py-4 px-6 border-b-2 font-medium text-lg ${
+                activeTab === "dashboard"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Dashboard
+            </button>
+            <button
+              onClick={() => setActiveTab("users")}
+              className={`py-4 px-6 border-b-2 font-medium text-lg ${
+                activeTab === "users"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Benutzerverwaltung
+            </button>
+            <button
+              onClick={() => setActiveTab("tutors")}
+              className={`py-4 px-6 border-b-2 font-medium text-lg ${
+                activeTab === "tutors"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Tutoren
+            </button>
+            <button
+              onClick={() => setActiveTab("schools")}
+              className={`py-4 px-6 border-b-2 font-medium text-lg ${
+                activeTab === "schools"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Schulen
+            </button>
+            <button
+              onClick={() => setActiveTab("courses")}
+              className={`py-4 px-6 border-b-2 font-medium text-lg ${
+                activeTab === "courses"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Kurse
+            </button>
+            <button
+              onClick={() => setActiveTab("visaServices")}
+              className={`py-4 px-6 border-b-2 font-medium text-lg ${
+                activeTab === "visaServices"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Visa-Dienste
+            </button>
+          </div>
+
+          {/* Content based on active tab */}
+          {activeTab === "dashboard" && renderDashboardTab()}
+          {activeTab === "users" && renderUsersTab()}
+          {activeTab === "tutors" && renderTutorsTab()}
+          {activeTab === "schools" && renderSchoolsTab()}
+          {activeTab === "courses" && renderCoursesTab()}
+          {activeTab === "visaServices" && renderVisaServicesTab()}
+        </>
+      )}
+
+      {/* Show access denied message when authentication is complete but user doesn't have access */}
+      {!isLoading && !canAccessAdminPanel() && (
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <div className="text-center">
+            <div className="text-6xl mb-4">🚫</div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              Zugriff verweigert
+            </h2>
+            <p className="text-gray-600">
+              Sie haben keine Berechtigung für das Admin-Panel.
+            </p>
+            <p className="text-gray-500 mt-2">
+              Bitte melden Sie sich als Administrator an.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

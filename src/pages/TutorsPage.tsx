@@ -32,6 +32,33 @@ interface BookingData {
   notes?: string
 }
 
+// Utility to normalize date to 'YYYY-MM-DD'
+function normalizeDate(dateStr: string) {
+  if (!dateStr) return '';
+  // If already in YYYY-MM-DD, return as is
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  // If in DD/MM/YYYY, convert
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+    const [day, month, year] = dateStr.split('/');
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+  // Try to parse as Date
+  const d = new Date(dateStr);
+  if (!isNaN(d.getTime())) {
+    return d.toISOString().slice(0, 10);
+  }
+  return dateStr;
+}
+
+// Utility to get local date string (YYYY-MM-DD) from ISO date
+function getLocalDateString(dateStr: string) {
+  const d = new Date(dateStr);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export default function TutorsPage() {
   const { t } = useTranslation('tutors')
   const { user } = useAuth()
@@ -61,6 +88,56 @@ export default function TutorsPage() {
     availability: '',
     rating: ''
   })
+
+  const [studentBookings, setStudentBookings] = useState([])
+
+  const fetchStudentBookings = async () => {
+    if (!user || user.role !== 'student') return;
+    try {
+      const res = await fetch('/api/bookings', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        }
+      });
+      const data = await res.json();
+      // Correct filter: booking_type, status, student_email
+      const bookings = (data.bookings || [])
+        .filter((b) =>
+          b.booking_type === 'tutor' &&
+          b.status !== 'cancelled' &&
+          b.student_email === user.email
+        )
+        .map((b) => ({
+          ...b,
+          time: b.time_slot && b.time_slot.length === 5 ? b.time_slot : (b.time_slot ? b.time_slot.slice(0, 5) : ''),
+          date: b.start_date ? getLocalDateString(b.start_date) : ''
+        }));
+      setStudentBookings(bookings);
+    } catch (e) {
+      setStudentBookings([]);
+    }
+  };
+
+  useEffect(() => {
+    if (!user || user.role !== 'student') return;
+    // Fetch all bookings for the student
+    const fetchBookings = async () => {
+      try {
+        const res = await fetch('/api/bookings', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          }
+        });
+        const data = await res.json();
+        // Only keep tutor bookings for this student
+        const bookings = (data.bookings || []).filter((b: any) => b.studentId === user.id && b.type === 'tutor');
+        setStudentBookings(bookings);
+      } catch (e) {
+        setStudentBookings([]);
+      }
+    };
+    fetchBookings();
+  }, [user]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -152,7 +229,16 @@ export default function TutorsPage() {
       notes: ''
     })
     setShowBookingModal(true)
+    fetchStudentBookings(); // Fetch bookings when modal opens
   }
+
+  // Also fetch bookings when date changes in the modal
+  useEffect(() => {
+    if (showBookingModal && bookingData.date) {
+      fetchStudentBookings();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showBookingModal, bookingData.date]);
 
   const getTutorAvailability = (tutorId: number, date: string) => {
     return availability.find(a => a.tutorId === tutorId && a.date === date)
@@ -587,7 +673,7 @@ export default function TutorsPage() {
                           return
                         }
                         
-                        setShowBookingModal(true)
+                        setShowBookingModal(true);
                         setBookingData({
                           tutorId: selectedTutor.id,
                           date: '',
@@ -596,6 +682,7 @@ export default function TutorsPage() {
                           subject: '',
                           notes: ''
                         })
+                        fetchStudentBookings(); // Fetch bookings when modal opens
                       }}
                       className="flex-1 bg-blue-700 hover:bg-blue-800 text-white px-6 py-3 rounded-md transition-colors"
                     >
@@ -622,7 +709,10 @@ export default function TutorsPage() {
                   Lektion buchen - {selectedTutor.name}
                 </h2>
                 <button
-                  onClick={() => setShowBookingModal(false)}
+                  onClick={() => {
+                    setShowBookingModal(false);
+                    setSelectedTutor(null);
+                  }}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -657,16 +747,23 @@ export default function TutorsPage() {
 
                 {/* Enhanced Time Selector */}
                 {bookingData.date && (
-                  <TutorTimeSelector
-                    tutorId={selectedTutor.id}
-                    selectedDate={bookingData.date}
-                    selectedTime={bookingData.time}
-                    onTimeChange={(time) => {
-                      console.log('Selected time:', time) // Debug log
-                      setBookingData({...bookingData, time})
-                    }}
-                    className="col-span-full"
-                  />
+                  (() => {
+                    const normalizedSelectedDate = normalizeDate(bookingData.date);
+                    const filteredBookings = studentBookings.filter(b => normalizeDate(b.date) === normalizedSelectedDate);
+                    const bookedTimes = filteredBookings.map(b => b.time);
+                    return (
+                      <TutorTimeSelector
+                        tutorId={selectedTutor.id}
+                        selectedDate={bookingData.date}
+                        selectedTime={bookingData.time}
+                        onTimeChange={(time) => {
+                          setBookingData({...bookingData, time})
+                        }}
+                        className="col-span-full"
+                        studentBookedSlots={bookedTimes}
+                      />
+                    );
+                  })()
                 )}
 
                 <div>
@@ -727,7 +824,10 @@ export default function TutorsPage() {
                 <div className="flex justify-end space-x-3">
                   <button
                     type="button"
-                    onClick={() => setShowBookingModal(false)}
+                    onClick={() => {
+                      setShowBookingModal(false);
+                      setSelectedTutor(null);
+                    }}
                     className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
                   >
                     Abbrechen

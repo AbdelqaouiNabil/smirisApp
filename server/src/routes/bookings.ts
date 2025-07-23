@@ -24,6 +24,17 @@ router.get('/notifications', authenticateToken, asyncHandler(async (req: Request
   res.json({ notifications: result.rows });
 }));
 
+// Mark all notifications as read for the current tutor or school
+router.post('/notifications/mark-all-read', authenticateToken, asyncHandler(async (req: Request, res: Response) => {
+  if (req.user!.role !== 'tutor' && req.user!.role !== 'school') {
+    return res.status(403).json({ error: 'Nur Tutoren oder Schulen können Benachrichtigungen als gelesen markieren.' });
+  }
+  const userId = req.user!.id;
+  // Mark all messages for this user as read
+  await query('UPDATE messages SET is_read = TRUE WHERE recipient_id = $1 AND is_read = FALSE', [userId]);
+  res.json({ success: true });
+}));
+
 // Alle Buchungen für den aktuellen Benutzer abrufen
 router.get('/', [
   authenticateToken,
