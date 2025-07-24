@@ -156,6 +156,10 @@ export default function TutorDashboard() {
   const [notifications, setNotifications] = useState<import('../lib/api').Notification[]>([])
   const [showNotificationsPanel, setShowNotificationsPanel] = useState(false);
 
+  // Add state for completed bookings and selected booking
+  const [completedBookings, setCompletedBookings] = useState<any[]>([]);
+  const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
+
   const handleCourseInput = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     setNewCourse(prev => ({

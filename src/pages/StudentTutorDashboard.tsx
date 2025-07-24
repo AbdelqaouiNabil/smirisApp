@@ -313,6 +313,7 @@ export default function StudentTutorDashboard() {
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
+          booking_id: reviewBooking.id,
           rating: reviewRating,
           comment: reviewComment,
         }),
@@ -836,6 +837,25 @@ export default function StudentTutorDashboard() {
       <Dialog open={reviewModalOpen} onClose={handleCloseReviewModal}>
         <DialogTitle>Leave a Review</DialogTitle>
         <DialogContent>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Session auswählen</label>
+            <select
+              value={reviewBooking?.id || ''}
+              onChange={e => {
+                const booking = tutorBookings.find(b => b.id === Number(e.target.value));
+                setReviewBooking(booking || null);
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="">Bitte eine Sitzung wählen...</option>
+              {tutorBookings.filter(b => b.status === 'completed' && !reviewedBookings.includes(b.id)).map(b => (
+                <option key={b.id} value={b.id}>
+                  {new Date(b.date).toLocaleDateString('de-DE')} {b.time}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="flex items-center space-x-2 mb-4">
             {[1,2,3,4,5].map((star) => (
               <Star
@@ -858,7 +878,7 @@ export default function StudentTutorDashboard() {
           <button
             onClick={handleSubmitReview}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-            disabled={submittingReview || !reviewRating}
+            disabled={submittingReview || !reviewRating || !reviewBooking}
           >
             Submit
           </button>

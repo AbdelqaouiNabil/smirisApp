@@ -24,6 +24,7 @@ import {
   Mail,
   Phone,
   Euro,
+  User,
 } from "lucide-react";
 import { schoolsApi, coursesApi, API_BASE_URL } from "../lib/api";
 import { apiClient } from "../lib/api";
@@ -60,6 +61,7 @@ interface AdminUser {
   status: "active" | "inactive" | "pending";
   city?: string;
   whatsappNumber?: string;
+  profile_photo?: string;
 }
 
 interface AdminTutor {
@@ -807,116 +809,55 @@ const AdminPanel = () => {
         </select>
       </div>
 
-      {/* Users Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Benutzer
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Rolle
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Registrierung
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Letzter Login
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Aktionen
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredUsers.map((user) => (
-              <tr key={user.id}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                      <span className="text-gray-600 font-medium">
-                        {user.name.charAt(0)}
-                      </span>
-                    </div>
-                    <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900">
-                        {user.name}
-                      </div>
-                      <div className="text-sm text-gray-500">{user.email}</div>
-                      {user.city && (
-                        <div className="text-xs text-gray-400 flex items-center">
-                          <MapPin className="w-3 h-3 mr-1" />
-                          {user.city}
-                        </div>
-                      )}
-                    </div>
+      {/* Users Card Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+        {filteredUsers.map((user) => (
+          <div key={user.id} className="bg-white rounded-xl shadow hover:shadow-lg transition-shadow p-6 min-h-[180px] flex flex-col justify-between border border-gray-100 hover:border-emerald-400 group">
+            <div className="flex items-center mb-4">
+              <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center text-2xl font-bold text-emerald-700 mr-4">
+                {user.profile_photo ? (
+                  <img src={user.profile_photo} alt={user.name} className="w-16 h-16 rounded-full object-cover" />
+                ) : (
+                  user.name[0]
+                )}
+              </div>
+              <div>
+                <div className="font-semibold text-lg text-gray-900">{user.name}</div>
+                <div className="text-sm text-gray-500">{user.email}</div>
+                {user.city && (
+                  <div className="text-xs text-gray-400 flex items-center">
+                    <MapPin className="w-3 h-3 mr-1" />
+                    {user.city}
                   </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      user.role === "admin"
-                        ? "bg-red-100 text-red-800"
-                        : user.role === "school"
-                        ? "bg-blue-100 text-blue-800"
-                        : user.role === "tutor"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-gray-100 text-gray-800"
-                    }`}
-                  >
-                    {user.role}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {new Date(user.registrationDate).toLocaleDateString("de-DE")}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {new Date(user.lastLogin).toLocaleDateString("de-DE")}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      user.status === "active"
-                        ? "bg-green-100 text-green-800"
-                        : user.status === "pending"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-red-100 text-red-800"
-                    }`}
-                  >
-                    {user.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <div className="flex items-center space-x-2">
-                    <button className="text-blue-600 hover:text-blue-900">
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      className="text-gray-600 hover:text-gray-900"
-                      onClick={() => handleToggleUserStatus(user)}
-                    >
-                      {user.status === "active" ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </button>
-                    <button
-                      className="text-red-600 hover:text-red-900"
-                      onClick={() => handleDeleteUser(user.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 mb-2">
+              <span className={`px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1
+                ${user.role === 'tutor' ? 'bg-blue-100 text-blue-700' : user.role === 'student' ? 'bg-green-100 text-green-700' : user.role === 'admin' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>
+                {user.role === 'tutor' ? <Users className="w-3 h-3" /> : <User className="w-3 h-3" />}
+                {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+              </span>
+              <span className="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
+                Registrierung: {new Date(user.registrationDate).toLocaleDateString('de-DE')}
+              </span>
+              <span className="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
+                Letzter Login: {new Date(user.lastLogin).toLocaleDateString('de-DE')}
+              </span>
+              <span className={`px-2 py-1 rounded-full text-xs font-semibold
+                ${user.status === 'active' ? 'bg-emerald-100 text-emerald-700' : user.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
+              </span>
+            </div>
+            <div className="flex gap-2 justify-end mt-2">
+              <button className="p-2 rounded hover:bg-blue-100" title="Edit"><Edit className="w-5 h-5 text-blue-600" /></button>
+              <button className="p-2 rounded hover:bg-yellow-100" title="Disable" onClick={() => handleToggleUserStatus(user)}>
+                {user.status === 'active' ? <EyeOff className="w-5 h-5 text-yellow-600" /> : <Eye className="w-5 h-5 text-green-600" />}
+              </button>
+              <button className="p-2 rounded hover:bg-red-100" title="Delete" onClick={() => handleDeleteUser(user.id)}><Trash2 className="w-5 h-5 text-red-600" /></button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

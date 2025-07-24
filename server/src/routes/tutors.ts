@@ -558,6 +558,9 @@ router.post('/:id/book', [
 // Bewertung für Tutor hinzufügen
 router.post('/:id/reviews', [
   authenticateToken,
+  body('booking_id')
+    .isInt()
+    .withMessage('Ungültige Buchungs-ID'),
   body('rating')
     .isInt({ min: 1, max: 5 })
     .withMessage('Bewertung muss zwischen 1 und 5 liegen'),
@@ -582,46 +585,35 @@ router.post('/:id/reviews', [
     throw validationError('Ungültige Tutor-ID');
   }
 
-  const { rating, title, comment } = req.body;
+  const { booking_id, rating, title, comment } = req.body;
 
-  // Prüfen, ob Tutor existiert
-  const tutorExists = await query(
-    'SELECT id FROM tutors WHERE id = $1 AND is_available = TRUE',
-    [tutorId]
+  // Check that the booking exists, belongs to the student, is for this tutor, and is completed
+  const bookingResult = await query(
+    `SELECT * FROM bookings WHERE id = $1 AND student_id = $2 AND tutor_id = $3 AND status = 'completed'`,
+    [booking_id, req.user!.id, tutorId]
   );
-  if (tutorExists.rows.length === 0) {
-    throw new AppError('Tutor nicht gefunden', 404);
+  if (bookingResult.rows.length === 0) {
+    throw new AppError('Sie können nur Sitzungen bewerten, die Sie abgeschlossen haben.', 403);
   }
 
-  // Prüfen, ob der Benutzer eine Stunde beim Tutor gebucht hatte
-  const hasBooking = await query(
-    `SELECT id FROM bookings 
-     WHERE student_id = $1 AND tutor_id = $2 AND status = 'completed'`,
-    [req.user!.id, tutorId]
-  );
-
-  if (hasBooking.rows.length === 0) {
-    throw new AppError('Sie können nur Tutoren bewerten, bei denen Sie eine Stunde genommen haben', 403);
-  }
-
-  // Prüfen, ob bereits eine Bewertung existiert
+  // Check that there is not already a review for this booking
   const existingReview = await query(
-    'SELECT id FROM reviews WHERE user_id = $1 AND tutor_id = $2',
-    [req.user!.id, tutorId]
+    'SELECT id FROM reviews WHERE user_id = $1 AND tutor_id = $2 AND booking_id = $3',
+    [req.user!.id, tutorId, booking_id]
   );
   if (existingReview.rows.length > 0) {
-    throw new AppError('Sie haben bereits eine Bewertung für diesen Tutor abgegeben', 409);
+    throw new AppError('Sie haben diese Sitzung bereits bewertet.', 409);
   }
 
-  // Bewertung hinzufügen
+  // Insert the review
   const result = await query(
-    `INSERT INTO reviews (user_id, tutor_id, rating, title, comment)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO reviews (user_id, tutor_id, booking_id, rating, title, comment)
+     VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING *`,
-    [req.user!.id, tutorId, rating, title, comment]
+    [req.user!.id, tutorId, booking_id, rating, title, comment]
   );
 
-  // Tutor-Rating und Review-Count aktualisieren
+  // Update tutor's rating and review count
   await query(
     `UPDATE tutors 
      SET rating = (

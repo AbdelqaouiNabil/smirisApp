@@ -126,16 +126,8 @@ export const TutorTimeSelector: React.FC<TutorTimeSelectorProps> = ({
         }))
       setAvailableSlots(available)
     } else {
-      // If no schedule is found, use default time slots for testing
-      const defaultSlots = [
-        { start: '09:00', end: '10:00', available: true },
-        { start: '10:00', end: '11:00', available: true },
-        { start: '11:00', end: '12:00', available: true },
-        { start: '14:00', end: '15:00', available: true },
-        { start: '15:00', end: '16:00', available: true },
-        { start: '16:00', end: '17:00', available: true }
-      ]
-      setAvailableSlots(defaultSlots)
+      // If no schedule is found, show no available slots
+      setAvailableSlots([])
     }
   }, [availability, selectedDate])
 
