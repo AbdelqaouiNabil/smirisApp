@@ -64,6 +64,48 @@ interface SchoolInfo {
   images: string[]
 }
 
+// NotificationsPanel component
+function NotificationsPanel({ notifications, onClose, onMarkAllRead }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm">
+      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-0 animate-fade-in overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-blue-50 to-emerald-50">
+          <span className="text-lg font-bold text-gray-900">Notifications</span>
+          <div className="flex items-center gap-2">
+            <button
+              className="text-emerald-600 hover:underline text-sm"
+              onClick={onMarkAllRead}
+            >
+              Mark all as read
+            </button>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-2xl font-bold">×</button>
+          </div>
+        </div>
+        <div className="divide-y max-h-64 overflow-y-auto">
+          {notifications.length === 0 ? (
+            <div className="p-4 text-gray-500 text-sm">No notifications.</div>
+          ) : notifications.map((n) => (
+            <div
+              key={n.id}
+              className={`py-3 px-2 transition ${n.is_read ? 'opacity-60' : ''}`}
+            >
+              <div className="font-semibold text-gray-800 break-words">
+                {n.subject}
+              </div>
+              <div className="text-gray-700 text-xs mb-1 break-words">
+                {n.message}
+              </div>
+              <div className="text-xs text-gray-400">
+                {new Date(n.created_at).toLocaleString()}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const SchoolDashboard = () => {
   const { user, canManageSchool, isLoading } = useAuth()
   const { toast } = useToast()
@@ -115,7 +157,7 @@ const SchoolDashboard = () => {
   const [reviews, setReviews] = useState<any[]>([]);
   const [courseReviews, setCourseReviews] = useState<{ [courseId: number]: any[] }>({});
   const [notifications, setNotifications] = useState<import('../lib/api').Notification[]>([])
-  const [showNotifications, setShowNotifications] = useState(false)
+  const [showNotificationsPanel, setShowNotificationsPanel] = useState(false);
 
   useEffect(() => {
     if (!canManageSchool() || !user) return;
@@ -199,6 +241,15 @@ const SchoolDashboard = () => {
       })
     }
   }
+
+  const markAllNotificationsAsRead = async () => {
+    try {
+      await bookingsApi.markAllSchoolNotificationsAsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    } catch (e) {
+      // Optionally handle error
+    }
+  };
 
   const loadNotifications = async () => {
     try {
@@ -775,15 +826,6 @@ const SchoolDashboard = () => {
     </div>
   )
 
-  const markAllNotificationsAsRead = async () => {
-    try {
-      await bookingsApi.markAllSchoolNotificationsAsRead();
-      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    } catch (e) {
-      // Optionally show a toast
-    }
-  };
-
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center text-xl text-gray-500">Loading...</div>;
   }
@@ -809,44 +851,29 @@ const SchoolDashboard = () => {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">{schoolInfo.name}</h1>
+            <h1 className="text-3xl font-bold text-gray-900 inline-block">{schoolInfo.name}</h1>
             <p className="text-gray-600">School Dashboard - Verwalten Sie Ihre Kurse und Informationen</p>
           </div>
-          <div className="relative">
-            <button
-              onClick={() => {
-                if (!showNotifications) {
-                  markAllNotificationsAsRead();
-                }
-                setShowNotifications((v) => !v);
-              }}
-              className="relative"
-            >
-              <Bell className="w-7 h-7 text-gray-700" />
-              {notifications.filter(n => !n.is_read).length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">
-                  {notifications.filter(n => !n.is_read).length}
-                </span>
-              )}
-            </button>
-            {showNotifications && (
-              <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
-                <div className="p-3 border-b font-semibold text-gray-700">Benachrichtigungen</div>
-                {notifications.length === 0 ? (
-                  <div className="p-4 text-gray-500 text-sm">Keine neuen Benachrichtigungen.</div>
-                ) : (
-                  notifications.map((n) => (
-                    <div key={n.id} className="p-3 border-b last:border-b-0 hover:bg-gray-50">
-                      <div className="font-medium text-gray-900">{n.subject}</div>
-                      <div className="text-gray-700 text-sm">{n.message}</div>
-                      <div className="text-xs text-gray-400 mt-1">{new Date(n.created_at).toLocaleString()}</div>
-                    </div>
-                  ))
-                )}
-              </div>
+          <button
+            className="relative p-2 rounded-full hover:bg-emerald-100 focus:outline-none ml-4"
+            onClick={() => setShowNotificationsPanel(true)}
+            aria-label="Show notifications"
+          >
+            <Bell className="text-emerald-600" size={28} />
+            {notifications.filter(n => !n.is_read).length > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {notifications.filter(n => !n.is_read).length}
+              </span>
             )}
-          </div>
+          </button>
         </div>
+        {showNotificationsPanel && (
+          <NotificationsPanel
+            notifications={notifications}
+            onClose={() => setShowNotificationsPanel(false)}
+            onMarkAllRead={markAllNotificationsAsRead}
+          />
+        )}
 
         {/* Tabs */}
         <div className="bg-white rounded-lg shadow mb-8">

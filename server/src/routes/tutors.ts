@@ -232,7 +232,7 @@ router.get('/', [
   const searchTerm = req.query.search as string;
 
   // WHERE-Klauseln dynamisch aufbauen
-  const whereConditions: string[] = ['u.is_active = TRUE', 't.is_available = TRUE'];
+  const whereConditions: string[] = ['u.is_active = TRUE'];
   const queryParams: any[] = [];
   let paramIndex = 1;
 
@@ -278,8 +278,8 @@ router.get('/', [
     `SELECT 
       t.id, t.bio, t.experience_years, t.hourly_rate, t.currency, t.specializations,
       t.languages, t.certifications, t.rating, t.review_count, t.total_students,
-      t.total_hours, t.availability, t.is_verified, t.created_at,
-      u.id as user_id, u.name, u.email, u.avatar_url, u.location
+      t.total_hours, t.availability, t.is_verified, t.created_at, t.profile_photo,
+      u.id as user_id, u.name, u.email, u.location
      FROM tutors t
      JOIN users u ON t.user_id = u.id
      WHERE ${whereConditions.join(' AND ')}
@@ -288,8 +288,21 @@ router.get('/', [
     queryParams
   );
 
+  // Normalize avatar_url from profile_photo
+  const tutors = result.rows.map(tutor => {
+    let avatar_url = null;
+    if (tutor.profile_photo) {
+      const filename = tutor.profile_photo.split('/').pop().split('\\').pop();
+      avatar_url = `/uploads/${filename}`;
+    }
+    return {
+      ...tutor,
+      avatar_url,
+    };
+  });
+
   res.json({
-    tutors: result.rows,
+    tutors,
     pagination: {
       page,
       limit,

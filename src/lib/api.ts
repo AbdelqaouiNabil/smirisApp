@@ -83,7 +83,7 @@ export interface Tutor {
   user_id: number
   name: string
   email: string
-  avatar_url?: string
+  profile_photo?: string
   location?: string
 }
 
@@ -466,7 +466,7 @@ export const visaApi = {
 }
 
 export const bookingsApi = {
-  getAll: (params?: { page?: number; limit?: number; status?: string }) =>
+  getAll: (params?: { page?: number; limit?: number; status?: string; type?: string }) =>
     apiClient.get<{ bookings: Booking[]; pagination: any }>('/bookings', params),
   
   getById: (id: number) =>
@@ -507,9 +507,9 @@ export const bookingsApi = {
   getSchoolNotifications: (params?: { is_read?: boolean }) =>
     apiClient.get<{ notifications: Notification[] }>('/bookings/notifications', params),
   markAllTutorNotificationsAsRead: () =>
-    apiClient.post('/bookings/notifications/mark-all-read', { role: 'tutor' }),
+    apiClient.post('/bookings/notifications/mark-all-read'),
   markAllSchoolNotificationsAsRead: () =>
-    apiClient.post('/bookings/notifications/mark-all-read', { role: 'school' }),
+    apiClient.post('/bookings/notifications/mark-all-read'),
 };
 
 export const paymentsApi = {

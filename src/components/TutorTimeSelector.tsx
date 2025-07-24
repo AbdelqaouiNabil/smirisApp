@@ -30,7 +30,7 @@ interface TutorTimeSelectorProps {
   selectedTime: string
   onTimeChange: (time: string) => void
   className?: string
-  studentBookedSlots?: string[] // New prop: times already booked by student for this date
+  studentBookedSlots?: string[] // Add this prop
 }
 
 const DAYS_MAP = {
@@ -59,14 +59,11 @@ export const TutorTimeSelector: React.FC<TutorTimeSelectorProps> = ({
   selectedTime,
   onTimeChange,
   className = '',
-  studentBookedSlots = [] // default empty array
+  studentBookedSlots = [], // Default to empty array
 }) => {
   const [availability, setAvailability] = useState<Availability | null>(null)
   const [loading, setLoading] = useState(false)
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([])
-
-  // Debug log to verify blocked slots
-  console.log('studentBookedSlots for', selectedDate, ':', studentBookedSlots);
 
   useEffect(() => {
     const loadAvailability = async () => {
@@ -218,37 +215,37 @@ export const TutorTimeSelector: React.FC<TutorTimeSelectorProps> = ({
               const timeValue = getTimeSlotValue(slot)
               const timeLabel = getTimeSlotLabel(slot)
               const isSelected = selectedTime === timeValue
-              const isStudentBooked = studentBookedSlots.includes(timeValue)
               const popularity = getPopularityBadge(slot.start)
+              const isBookedByStudent = studentBookedSlots.includes(timeValue)
+              
               return (
                 <button
                   key={index}
-                  onClick={() => !isStudentBooked && onTimeChange(timeValue)}
+                  onClick={() => !isBookedByStudent && onTimeChange(timeValue)}
                   className={`
                     relative p-3 rounded-lg border-2 transition-all duration-200 text-left
-                    ${isStudentBooked
-                      ? 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
-                      : isSelected
-                        ? 'border-blue-500 bg-blue-50 shadow-md transform scale-105'
+                    ${isSelected 
+                      ? 'border-blue-500 bg-blue-50 shadow-md transform scale-105' 
+                      : isBookedByStudent
+                        ? 'border-gray-200 bg-gray-100 opacity-60 cursor-not-allowed'
                         : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-25 hover:shadow-sm'
                     }
                     group
                   `}
-                  disabled={isStudentBooked}
-                  tabIndex={isStudentBooked ? -1 : 0}
-                  aria-disabled={isStudentBooked}
+                  disabled={isBookedByStudent}
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className={`font-medium text-sm ${isSelected ? 'text-blue-700' : isStudentBooked ? 'text-gray-400' : 'text-gray-900'}`}>
+                      <div className={`font-medium text-sm ${isSelected ? 'text-blue-700' : isBookedByStudent ? 'text-gray-400' : 'text-gray-900'}`}>
                         {timeLabel}
                       </div>
                       <div className="flex items-center mt-1 space-x-1">
-                        <div className={`w-2 h-2 rounded-full ${isStudentBooked ? 'bg-gray-400' : isSelected ? 'bg-blue-500' : 'bg-green-500'}`}></div>
-                        <span className={`text-xs ${isStudentBooked ? 'text-gray-400' : 'text-gray-500'}`}>{isStudentBooked ? 'Gebucht' : 'Verfügbar'}</span>
+                        <div className={`w-2 h-2 rounded-full ${isSelected ? 'bg-blue-500' : isBookedByStudent ? 'bg-gray-400' : 'bg-green-500'}`}></div>
+                        <span className={`text-xs ${isBookedByStudent ? 'text-gray-400' : 'text-gray-500'}`}>{isBookedByStudent ? 'Konflikt' : 'Verfügbar'}</span>
                       </div>
                     </div>
-                    {isSelected && !isStudentBooked && (
+                    
+                    {isSelected && (
                       <div className="absolute top-1 right-1">
                         <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
                           <div className="w-2 h-2 bg-white rounded-full"></div>
@@ -256,7 +253,8 @@ export const TutorTimeSelector: React.FC<TutorTimeSelectorProps> = ({
                       </div>
                     )}
                   </div>
-                  {popularity && !isStudentBooked && (
+                  
+                  {popularity && !isBookedByStudent && (
                     <div className="mt-2">
                       <span className={`text-xs px-2 py-1 rounded-full border ${popularity.color}`}>
                         {popularity.label}

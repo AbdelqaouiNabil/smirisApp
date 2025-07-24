@@ -20,9 +20,9 @@ import reviewsRoutes from "./routes/reviews";
 // Import middleware
 import { errorHandler } from "./middleware/errorHandler";
 import { authenticateToken } from "./middleware/auth";
-import passport from "passport";
-import session from "express-session";
-import "./config/passport"; // Import the passport configuration
+import passport from 'passport';
+import session from 'express-session';
+import './config/passport'; // Import the passport configuration
 
 // Load environment variables
 dotenv.config();
@@ -30,8 +30,8 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Security middleware - completely disabled in development
-if (process.env.NODE_ENV === "production") {
+// Security middleware
+if (process.env.NODE_ENV === 'production') {
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -45,7 +45,6 @@ if (process.env.NODE_ENV === "production") {
     })
   );
 }
-// No helmet in development mode to avoid any security restrictions
 
 // Rate limiting
 const limiter = rateLimit({
@@ -71,15 +70,7 @@ app.use(
         : true, // Allow all origins in development
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "Cache-Control",
-      "Pragma",
-      "X-Requested-With",
-      "Accept",
-      "Origin",
-    ],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
@@ -91,17 +82,15 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Session middleware for Passport
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "your_default_session_secret",
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: process.env.NODE_ENV === "production", // Use secure cookies in production
-      httpOnly: true,
-    },
-  })
-);
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your_default_session_secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
+    httpOnly: true,
+  }
+}));
 
 // Initialize Passport
 app.use(passport.initialize());
@@ -122,6 +111,15 @@ app.get("/health", (req, res) => {
   });
 });
 
+// Allow iframe embedding for local development (remove or restrict in production!)
+if (process.env.NODE_ENV !== 'production') {
+  app.use((req, res, next) => {
+    res.removeHeader('X-Frame-Options');
+    res.removeHeader('Content-Security-Policy');
+    next();
+  });
+}
+
 // API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/schools", schoolRoutes);
@@ -132,29 +130,10 @@ app.use("/api/reviews", reviewsRoutes);
 app.use("/api/visa", visaRoutes);
 app.use("/api/admin", authenticateToken, adminRoutes);
 
-// Serve uploaded files statically with flexible CORS in development
-const uploadsPath = path.join(__dirname, "../uploads");
-app.use("/uploads", (req, res, next) => {
-  if (process.env.NODE_ENV !== "production") {
-    // In development, allow all origins
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
-    res.header(
-      "Access-Control-Allow-Headers",
-      "Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma"
-    );
-    res.header("Access-Control-Allow-Credentials", "true");
-  } else {
-    // In production, be more restrictive
-    res.header(
-      "Access-Control-Allow-Origin",
-      "https://ku19mpyoa0.space.minimax.io"
-    );
-    res.header(
-      "Access-Control-Allow-Headers",
-      "Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma"
-    );
-  }
+// Serve uploaded files statically with CORS header
+const uploadsPath = path.join(__dirname, '../uploads');
+app.use('/uploads', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'http://localhost:5173');
   express.static(uploadsPath)(req, res, next);
 });
 

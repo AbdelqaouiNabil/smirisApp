@@ -9,7 +9,7 @@ import { useToast } from '../hooks/use-toast'
 import { Star, MapPin, Clock, Euro, Filter, Search, Users, Award, CheckCircle, Video, Globe, MessageCircle } from 'lucide-react'
 import { ComparisonButton } from '../components/comparison/ComparisonButton'
 import { TutorTimeSelector } from '../components/TutorTimeSelector'
-import { tutorsApi, Tutor, ApiError } from '../lib/api'
+import { tutorsApi, Tutor, ApiError, bookingsApi } from '../lib/api'
 
 // Lokalisierung für deutsche Sprache
 moment.locale('de')
@@ -32,31 +32,10 @@ interface BookingData {
   notes?: string
 }
 
-// Utility to normalize date to 'YYYY-MM-DD'
-function normalizeDate(dateStr: string) {
-  if (!dateStr) return '';
-  // If already in YYYY-MM-DD, return as is
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-  // If in DD/MM/YYYY, convert
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
-    const [day, month, year] = dateStr.split('/');
-    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-  }
-  // Try to parse as Date
-  const d = new Date(dateStr);
-  if (!isNaN(d.getTime())) {
-    return d.toISOString().slice(0, 10);
-  }
-  return dateStr;
-}
-
-// Utility to get local date string (YYYY-MM-DD) from ISO date
-function getLocalDateString(dateStr: string) {
-  const d = new Date(dateStr);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+function buildFileUrl(filePath: string | null | undefined): string {
+  if (!filePath || typeof filePath !== 'string') return '/default-avatar.png';
+  const filename = filePath.split('/').pop().split('\\').pop();
+  return `http://localhost:5000/uploads/${filename}`;
 }
 
 export default function TutorsPage() {
@@ -89,55 +68,7 @@ export default function TutorsPage() {
     rating: ''
   })
 
-  const [studentBookings, setStudentBookings] = useState([])
-
-  const fetchStudentBookings = async () => {
-    if (!user || user.role !== 'student') return;
-    try {
-      const res = await fetch('/api/bookings', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        }
-      });
-      const data = await res.json();
-      // Correct filter: booking_type, status, student_email
-      const bookings = (data.bookings || [])
-        .filter((b) =>
-          b.booking_type === 'tutor' &&
-          b.status !== 'cancelled' &&
-          b.student_email === user.email
-        )
-        .map((b) => ({
-          ...b,
-          time: b.time_slot && b.time_slot.length === 5 ? b.time_slot : (b.time_slot ? b.time_slot.slice(0, 5) : ''),
-          date: b.start_date ? getLocalDateString(b.start_date) : ''
-        }));
-      setStudentBookings(bookings);
-    } catch (e) {
-      setStudentBookings([]);
-    }
-  };
-
-  useEffect(() => {
-    if (!user || user.role !== 'student') return;
-    // Fetch all bookings for the student
-    const fetchBookings = async () => {
-      try {
-        const res = await fetch('/api/bookings', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-          }
-        });
-        const data = await res.json();
-        // Only keep tutor bookings for this student
-        const bookings = (data.bookings || []).filter((b: any) => b.studentId === user.id && b.type === 'tutor');
-        setStudentBookings(bookings);
-      } catch (e) {
-        setStudentBookings([]);
-      }
-    };
-    fetchBookings();
-  }, [user]);
+  const [studentBookings, setStudentBookings] = useState<any[]>([])
 
   useEffect(() => {
     const loadData = async () => {
@@ -145,6 +76,11 @@ export default function TutorsPage() {
         const tutorsResponse = await tutorsApi.getAll({ limit: 50 })
         const tutorsData = tutorsResponse.tutors || []
         
+        // Debug: Log the raw API response and each tutor's avatar_url
+        console.log('Raw tutorsApi.getAll response:', tutorsResponse);
+        tutorsData.forEach((tutor: any, idx: number) => {
+          console.log(`Tutor[${idx}]: id=${tutor.id}, name=${tutor.name}, avatar_url=${tutor.avatar_url}, profile_photo=${tutor.profile_photo}`);
+        });
         setTutors(tutorsData)
         setFilteredTutors(tutorsData)
         
@@ -229,16 +165,7 @@ export default function TutorsPage() {
       notes: ''
     })
     setShowBookingModal(true)
-    fetchStudentBookings(); // Fetch bookings when modal opens
   }
-
-  // Also fetch bookings when date changes in the modal
-  useEffect(() => {
-    if (showBookingModal && bookingData.date) {
-      fetchStudentBookings();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showBookingModal, bookingData.date]);
 
   const getTutorAvailability = (tutorId: number, date: string) => {
     return availability.find(a => a.tutorId === tutorId && a.date === date)
@@ -315,6 +242,18 @@ export default function TutorsPage() {
         variant: "default"
       })
 
+      // Add the new booking to studentBookings so the slot is immediately blocked
+      setStudentBookings(prev => [
+        ...prev,
+        {
+          user_id: user.id,
+          tutor_id: selectedTutor.id,
+          start_date: formattedDate,
+          time_slot: formattedTime,
+          status: 'confirmed',
+        }
+      ])
+
       // Close modal and reset data
       setShowBookingModal(false)
       setSelectedTutor(null)
@@ -353,6 +292,40 @@ export default function TutorsPage() {
             resource: { tutorId: a.tutorId, date: a.date, time: slot }
           }))
       ) : []
+
+  // Fetch student bookings when booking modal opens or booking date changes
+  useEffect(() => {
+    if (showBookingModal && user && bookingData.date) {
+      const fetchBookings = async () => {
+        try {
+          // Only fetch tutor bookings for the logged-in student
+          const res = await bookingsApi.getAll({ status: 'confirmed', type: 'tutor' })
+          setStudentBookings(res.bookings || [])
+        } catch (err) {
+          setStudentBookings([])
+        }
+      }
+      fetchBookings()
+    }
+  }, [showBookingModal, user, bookingData.date])
+
+  // If selected time is now in conflict, clear it
+  useEffect(() => {
+    if (!bookingData.date) return;
+    const bookedSlots = studentBookings
+      .filter(b => b.start_date.split('T')[0] === bookingData.date)
+      .map(b => b.time_slot)
+    if (bookedSlots.includes(bookingData.time)) {
+      setBookingData(bd => ({ ...bd, time: '' }))
+    }
+  }, [studentBookings, bookingData.date])
+
+  // In the booking modal, pass studentBookedSlots to TutorTimeSelector
+  const bookedSlotsForDate = studentBookings
+    .filter(b => b.start_date.split('T')[0] === bookingData.date)
+    .map(b => b.time_slot)
+
+  // Remove debug logging for booking slot comparison
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -484,7 +457,7 @@ export default function TutorsPage() {
                   <div className="p-6">
                     <div className="flex items-start space-x-4 mb-4">
                       <img
-                        src={tutor.avatar_url}
+                        src={buildFileUrl(tutor.profile_photo)}
                         alt={tutor.name}
                         className="w-16 h-16 rounded-full object-cover"
                       />
@@ -598,7 +571,7 @@ export default function TutorsPage() {
               <div className="flex items-start justify-between mb-6">
                 <div className="flex items-start space-x-4">
                   <img
-                    src={selectedTutor.avatar_url}
+                    src={buildFileUrl(selectedTutor.profile_photo)}
                     alt={selectedTutor.name}
                     className="w-20 h-20 rounded-full object-cover"
                   />
@@ -673,7 +646,7 @@ export default function TutorsPage() {
                           return
                         }
                         
-                        setShowBookingModal(true);
+                        setShowBookingModal(true)
                         setBookingData({
                           tutorId: selectedTutor.id,
                           date: '',
@@ -682,7 +655,6 @@ export default function TutorsPage() {
                           subject: '',
                           notes: ''
                         })
-                        fetchStudentBookings(); // Fetch bookings when modal opens
                       }}
                       className="flex-1 bg-blue-700 hover:bg-blue-800 text-white px-6 py-3 rounded-md transition-colors"
                     >
@@ -747,23 +719,17 @@ export default function TutorsPage() {
 
                 {/* Enhanced Time Selector */}
                 {bookingData.date && (
-                  (() => {
-                    const normalizedSelectedDate = normalizeDate(bookingData.date);
-                    const filteredBookings = studentBookings.filter(b => normalizeDate(b.date) === normalizedSelectedDate);
-                    const bookedTimes = filteredBookings.map(b => b.time);
-                    return (
-                      <TutorTimeSelector
-                        tutorId={selectedTutor.id}
-                        selectedDate={bookingData.date}
-                        selectedTime={bookingData.time}
-                        onTimeChange={(time) => {
-                          setBookingData({...bookingData, time})
-                        }}
-                        className="col-span-full"
-                        studentBookedSlots={bookedTimes}
-                      />
-                    );
-                  })()
+                  <TutorTimeSelector
+                    tutorId={selectedTutor.id}
+                    selectedDate={bookingData.date}
+                    selectedTime={bookingData.time}
+                    onTimeChange={(time) => {
+                      console.log('Selected time:', time) // Debug log
+                      setBookingData({...bookingData, time})
+                    }}
+                    className="col-span-full"
+                    studentBookedSlots={bookedSlotsForDate}
+                  />
                 )}
 
                 <div>
@@ -824,10 +790,7 @@ export default function TutorsPage() {
                 <div className="flex justify-end space-x-3">
                   <button
                     type="button"
-                    onClick={() => {
-                      setShowBookingModal(false);
-                      setSelectedTutor(null);
-                    }}
+                    onClick={() => setShowBookingModal(false)}
                     className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
                   >
                     Abbrechen
@@ -835,6 +798,7 @@ export default function TutorsPage() {
                   <button
                     type="submit"
                     className="px-4 py-2 bg-blue-700 text-white rounded-md hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    disabled={!bookingData.time || bookedSlotsForDate.includes(bookingData.time)}
                   >
                     Jetzt buchen
                   </button>
