@@ -75,4 +75,72 @@ router.get('/course/:courseId', asyncHandler(async (req: Request, res: Response)
   res.json({ reviews: result.rows });
 }));
 
+// POST /api/reviews/tutor - Add a review for a tutor
+router.post(
+  '/tutor',
+  authenticateToken,
+  [
+    body('tutor_id').isInt().withMessage('Ungültige Tutor-ID'),
+    body('rating').isInt({ min: 1, max: 5 }).withMessage('Bewertung muss zwischen 1 und 5 liegen'),
+    body('comment').isString().isLength({ min: 3, max: 1000 }).withMessage('Kommentar zu kurz oder zu lang'),
+  ],
+  asyncHandler(async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      throw validationError('Eingabedaten sind ungültig');
+    }
+
+    const { tutor_id, rating, comment } = req.body;
+    const user_id = req.user!.id;
+
+    // Check if tutor exists
+    const tutorResult = await query(
+      'SELECT id FROM tutors WHERE id = $1',
+      [tutor_id]
+    );
+    if (tutorResult.rows.length === 0) {
+      throw new AppError('Tutor nicht gefunden', 404);
+    }
+
+    // Check if user already reviewed this booking
+    const existingReview = await query(
+      'SELECT id FROM reviews WHERE user_id = $1 AND tutor_id = $2',
+      [user_id, tutor_id]
+    );
+    if (existingReview.rows.length > 0) {
+      throw new AppError('Sie haben diesen Tutor bereits bewertet', 409);
+    }
+
+    // Insert review
+    const result = await query(
+      `INSERT INTO reviews (user_id, tutor_id, rating, comment, is_verified, is_public)
+       VALUES ($1, $2, $3, $4, TRUE, TRUE)
+       RETURNING *`,
+      [user_id, tutor_id, rating, comment]
+    );
+
+    res.status(201).json({
+      message: 'Bewertung erfolgreich gespeichert',
+      review: result.rows[0],
+    });
+  })
+);
+
+// GET /api/reviews/tutor/:tutorId - Get all reviews for a tutor
+router.get('/tutor/:tutorId', asyncHandler(async (req: Request, res: Response) => {
+  const tutorId = parseInt(req.params.tutorId);
+  if (isNaN(tutorId)) {
+    throw validationError('Ungültige Tutor-ID');
+  }
+  const result = await query(
+    `SELECT r.id, r.rating, r.comment, r.created_at, u.name as reviewer_name
+     FROM reviews r
+     JOIN users u ON r.user_id = u.id
+     WHERE r.tutor_id = $1 AND r.is_public = TRUE
+     ORDER BY r.created_at DESC`,
+    [tutorId]
+  );
+  res.json({ reviews: result.rows });
+}));
+
 export default router; 

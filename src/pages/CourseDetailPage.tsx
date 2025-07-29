@@ -39,7 +39,8 @@ export default function CourseDetailPage() {
         console.log('CourseDetailPage: Course response:', courseResponse)
         setCourse(courseResponse.course)
         
-        if (courseResponse.course.school_id) {
+        // Only load school if the course has a school_id and it's not a tutor course
+        if (courseResponse.course.school_id && !courseResponse.course.tutor_id) {
           console.log('CourseDetailPage: Loading school with ID:', courseResponse.course.school_id)
           const schoolResponse = await schoolsApi.getById(courseResponse.course.school_id)
           console.log('CourseDetailPage: School response:', schoolResponse)
@@ -180,7 +181,7 @@ export default function CourseDetailPage() {
                     <MapPin className="w-5 h-5 text-red-600 mr-3" />
                     <div>
                       <p className="text-sm text-gray-500">Standort</p>
-                      <p className="font-medium">{course.school_location}</p>
+                      <p className="font-medium">{course.school_location || course.tutor_name || 'Online'}</p>
                     </div>
                   </div>
                                      <div className="flex items-center">
@@ -230,7 +231,7 @@ export default function CourseDetailPage() {
               </div>
             </div>
 
-            {/* School Information */}
+            {/* School or Tutor Information */}
             {school && (
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Sprachschule</h3>
@@ -265,6 +266,43 @@ export default function CourseDetailPage() {
                   {school.description && (
                     <p className="text-sm text-gray-600 mt-4">
                       {school.description}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Tutor Information */}
+            {course.tutor_id && course.tutor_name && (
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Tutor</h3>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-medium text-gray-900">{course.tutor_name}</h4>
+                    <div className="flex items-center mt-1">
+                      <Star className="w-4 h-4 text-yellow-400 fill-current mr-1" />
+                      <span className="text-sm text-gray-600">{course.tutor_rating || 0} Bewertung</span>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {course.tutor_email && (
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Mail className="w-4 h-4 mr-2" />
+                        <span>{course.tutor_email}</span>
+                      </div>
+                    )}
+                    {course.tutor_rate && (
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Euro className="w-4 h-4 mr-2" />
+                        <span>{course.tutor_rate} EUR/Stunde</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {course.tutor_bio && (
+                    <p className="text-sm text-gray-600 mt-4">
+                      {course.tutor_bio}
                     </p>
                   )}
                 </div>

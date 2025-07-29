@@ -318,9 +318,50 @@ router.get('/', [
 router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
   const tutorId = parseInt(req.params.id);
   if (isNaN(tutorId)) throw validationError('Ungültige Tutor-ID');
-  const result = await query('SELECT * FROM tutors WHERE id = $1', [tutorId]);
-  if (result.rows.length === 0) throw new AppError('Tutor nicht gefunden', 404);
-  res.json({ tutor: result.rows[0] });
+  
+  // Get tutor details with user information
+  const tutorResult = await query(`
+    SELECT t.*, u.name, u.email, u.avatar_url, u.location
+    FROM tutors t
+    JOIN users u ON t.user_id = u.id
+    WHERE t.id = $1
+  `, [tutorId]);
+  
+  if (tutorResult.rows.length === 0) throw new AppError('Tutor nicht gefunden', 404);
+  
+  // Get reviews for this tutor
+  const reviewsResult = await query(`
+    SELECT r.*, u.name as reviewer_name
+    FROM reviews r
+    JOIN users u ON r.user_id = u.id
+    WHERE r.tutor_id = $1 AND r.is_public = TRUE
+    ORDER BY r.created_at DESC
+    LIMIT 10
+  `, [tutorId]);
+  
+  // Get booked time slots for this tutor
+  const bookedSlotsResult = await query(`
+    SELECT DISTINCT time_slot, start_date
+    FROM bookings
+    WHERE tutor_id = $1 AND status IN ('confirmed', 'completed')
+    ORDER BY start_date DESC
+    LIMIT 20
+  `, [tutorId]);
+  
+  // Get courses for this tutor
+  const coursesResult = await query(`
+    SELECT *
+    FROM courses
+    WHERE tutor_id = $1
+    ORDER BY created_at DESC
+  `, [tutorId]);
+  
+  res.json({
+    tutor: tutorResult.rows[0],
+    reviews: reviewsResult.rows,
+    bookedSlots: bookedSlotsResult.rows,
+    courses: coursesResult.rows
+  });
 }));
 
 // Tutor-Profil erstellen
@@ -694,10 +735,9 @@ router.get('/me/availability', [
 ], asyncHandler(async (req: Request, res: Response) => {
   const userId = req.user!.id;
 
+  // 1. Get the tutor's availability
   const result = await query(
-    `SELECT availability 
-     FROM tutors 
-     WHERE user_id = $1`,
+    `SELECT id, availability FROM tutors WHERE user_id = $1`,
     [userId]
   );
 
@@ -705,8 +745,66 @@ router.get('/me/availability', [
     throw new AppError('Tutor nicht gefunden', 404);
   }
 
+  const tutorId = result.rows[0].id;
+  let availability = result.rows[0].availability;
+
+  // 2. Fetch all bookings for this tutor (confirmed or completed)
+  const bookingsResult = await query(
+    `SELECT start_date, time_slot, duration_minutes
+     FROM bookings
+     WHERE tutor_id = $1 AND status IN ('confirmed', 'completed')`,
+    [tutorId]
+  );
+  const now = new Date();
+
+  // 3. Build a map of currently booked slots that are still in the future
+  const bookedSlots: Record<string, Set<string>> = {};
+  for (const booking of bookingsResult.rows) {
+    if (!booking.time_slot || typeof booking.time_slot !== 'string' || !booking.time_slot.includes('-')) {
+      continue; // skip invalid or missing time_slot
+    }
+    const bookingDate = new Date(booking.start_date);
+    const [start, end] = booking.time_slot.split('-');
+    // End datetime for the slot
+    const [endHour, endMinute] = end.split(':');
+    const bookingEnd = new Date(bookingDate);
+    bookingEnd.setHours(Number(endHour), Number(endMinute), 0, 0);
+
+    // Only consider as "booked" if the booking is still in the future
+    if (bookingEnd > now) {
+      const dayOfWeek = bookingDate.toLocaleString('en-US', { weekday: 'long' }).toLowerCase();
+      if (!bookedSlots[dayOfWeek]) bookedSlots[dayOfWeek] = new Set();
+      bookedSlots[dayOfWeek].add(booking.time_slot);
+    }
+  }
+
+  // 4. For each day, reconstruct the slots array:
+  //    - If a slot is in the original slots array or was previously booked but is now in the past, include it.
+  //    - If a slot is currently booked (future), exclude it.
+  //    - This "resets" slots whose bookings are over.
+  const allPossibleSlots = [
+    "09:00-10:00", "10:00-11:00", "11:00-12:00", "14:00-15:00", "15:00-16:00", "16:00-17:00"
+    // Add all possible slots you support here!
+  ];
+
+  for (const [day, dayData] of Object.entries(availability) as [string, any][]) {
+    // Start with all possible slots for that day
+    let slots = new Set(allPossibleSlots);
+
+    // Remove slots that are currently booked (future)
+    if (bookedSlots[day]) {
+      for (const slot of bookedSlots[day]) {
+        slots.delete(slot);
+      }
+    }
+
+    // Only keep slots that were originally available for this day
+    const originalSlots = Array.isArray(availability[day].slots) ? availability[day].slots : [];
+    dayData.slots = Array.from(slots).filter(slot => originalSlots.includes(slot));
+  }
+
   res.json({
-    availability: result.rows[0].availability
+    availability
   });
 }));
 

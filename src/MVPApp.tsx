@@ -82,7 +82,7 @@ function MVPApp() {
                   <Route path="/anmelden" element={<LoginPage />} />
                   
                   {/* Admin Panel */}
-                  <Route path="/admin" element={<ProtectedRoute><AdminPanelGuard /></ProtectedRoute>} />
+                  <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
                   
                   {/* Catch-all redirect to comparison hub */}
                   <Route path="*" element={<ComparisonHub />} />

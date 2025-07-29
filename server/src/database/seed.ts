@@ -281,6 +281,47 @@ const seedDatabase = async () => {
     }
     console.log(`✅ ${bookingCount} Beispiel-Buchungen erstellt`);
 
+    // Beispiel-Tutor-Bewertungen erstellen
+    const reviewCount = 20;
+    const reviewComments = [
+      'Sehr guter Tutor, erklärt alles sehr verständlich.',
+      'Hervorragende Unterrichtsmethode, kann ich nur empfehlen.',
+      'Sehr geduldig und professionell.',
+      'Hat mir sehr geholfen, meine Deutschkenntnisse zu verbessern.',
+      'Flexibel und anpassungsfähig an meine Bedürfnisse.',
+      'Sehr strukturierter Unterricht, macht Spaß zu lernen.',
+      'Kompetent und freundlich, sehr zu empfehlen.',
+      'Hat mir bei der Prüfungsvorbereitung sehr geholfen.',
+      'Sehr motivierend und unterstützend.',
+      'Professioneller Unterricht mit modernen Methoden.'
+    ];
+    
+    for (let i = 0; i < reviewCount; i++) {
+      const studentResult = await pool.query(
+        'SELECT id FROM users WHERE role = $1 ORDER BY RANDOM() LIMIT 1',
+        ['student']
+      );
+
+      const tutorResult = await pool.query(
+        'SELECT id FROM tutors ORDER BY RANDOM() LIMIT 1'
+      );
+
+      if (studentResult.rows.length > 0 && tutorResult.rows.length > 0) {
+        const studentId = studentResult.rows[0].id;
+        const tutorId = tutorResult.rows[0].id;
+        const rating = Math.floor(Math.random() * 2) + 4; // 4-5 Sterne
+        const comment = reviewComments[Math.floor(Math.random() * reviewComments.length)];
+        
+        await pool.query(
+          `INSERT INTO reviews 
+           (user_id, tutor_id, rating, comment, is_verified, is_public)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [studentId, tutorId, rating, comment, true, true]
+        );
+      }
+    }
+    console.log(`✅ ${reviewCount} Beispiel-Tutor-Bewertungen erstellt`);
+
     console.log('🎉 Datenbank-Seeding abgeschlossen!');
     console.log('');
     console.log('🔑 Test-Zugangsdaten:');

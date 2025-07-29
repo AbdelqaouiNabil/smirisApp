@@ -55,11 +55,18 @@ export interface Course {
   schedule?: string
   is_online: boolean
   image_url?: string
-  school_id: number
+  school_id?: number
+  tutor_id?: number
   school_name?: string
   school_location?: string
   school_rating?: number
   school_image?: string
+  tutor_name?: string
+  tutor_email?: string
+  tutor_bio?: string
+  tutor_rate?: number
+  tutor_rating?: number
+  is_active?: boolean
   created_at: string
 }
 
@@ -85,6 +92,8 @@ export interface Tutor {
   email: string
   profile_photo?: string
   location?: string
+  cv_file_path?: string
+  certificate_files?: string[]
 }
 
 export interface VisaService {
@@ -113,6 +122,7 @@ export interface Booking {
   currency: string
   notes?: string
   created_at: string
+  booking_type?: 'tutor' | 'course' | 'visa'
 }
 
 export interface CourseBooking {
@@ -417,7 +427,16 @@ export const coursesApi = {
     apiClient.post<{ course: Course }>('/courses/tutor', data),
   
   deleteTutorCourse: (id: number) =>
-    apiClient.delete<{ message: string }>(`/courses/tutor/${id}`)
+    apiClient.delete<{ message: string }>(`/courses/tutor/${id}`),
+  
+  toggleActiveStatus: (id: number, isActive: boolean) =>
+    apiClient.patch<{ course: Course }>(`/courses/tutor/${id}/toggle-status`, { is_active: isActive }),
+  
+  checkCourseBookings: (id: number) =>
+    apiClient.get<{ hasActiveBookings: boolean; bookingCount: number }>(`/courses/tutor/${id}/has-bookings`),
+  
+  updateTutorCourse: (id: number, data: any) =>
+    apiClient.put<{ course: Course }>(`/courses/tutor/${id}`, data)
 }
 
 export const tutorsApi = {

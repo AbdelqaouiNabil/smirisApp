@@ -86,9 +86,9 @@ export default function BookingPage() {
           price: courseData.price,
           currency: courseData.currency,
           duration: courseData.duration_weeks ? `${courseData.duration_weeks} Wochen` : 'N/A',
-          location: courseData.school_location || 'N/A',
-          rating: courseData.school_rating,
-          provider: courseData.school_name,
+          location: courseData.school_location || courseData.tutor_name || 'Online',
+          rating: courseData.school_rating || courseData.tutor_rating || 0,
+          provider: courseData.school_name || courseData.tutor_name || 'Unbekannt',
           image: courseData.image_url || '/images/course-default.jpg',
           features: [
             `Sprachniveau: ${courseData.level}`,

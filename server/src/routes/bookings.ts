@@ -70,8 +70,10 @@ router.get('/', [
     if (tutorResult.rows.length === 0) {
       throw new AppError('Tutor-Profil nicht gefunden', 404);
     }
-    whereConditions.push(`b.tutor_id = $${paramIndex++}`);
-    queryParams.push(tutorResult.rows[0].id);
+    const tutorId = tutorResult.rows[0].id;
+    // Tutors can see both direct sessions (b.tutor_id) and course bookings (c.tutor_id)
+    whereConditions.push(`(b.tutor_id = $${paramIndex++} OR c.tutor_id = $${paramIndex++})`);
+    queryParams.push(tutorId, tutorId);
   } else if (req.user!.role === 'school') {
     // Schulen sehen Buchungen für ihre Kurse
     whereConditions.push(`c.school_id IN (SELECT id FROM schools WHERE owner_id = $${paramIndex++})`);
@@ -97,6 +99,7 @@ router.get('/', [
      FROM bookings b
      LEFT JOIN courses c ON b.course_id = c.id
      LEFT JOIN tutors t ON b.tutor_id = t.id
+     LEFT JOIN tutors ct ON c.tutor_id = ct.id
      ${whereClause}`,
     queryParams
   );
@@ -114,11 +117,14 @@ router.get('/', [
       -- Student-Informationen
       s.name as student_name, s.email as student_email,
       -- Kurs-Informationen
-      c.title as course_title, c.level as course_level,
+      c.title as course_title, c.level as course_level, c.price as course_price,
       sc.name as school_name, sc.location as school_location,
-      -- Tutor-Informationen
+      -- Tutor-Informationen (for direct sessions)
       tu.name as tutor_name, tu.email as tutor_email,
       t.hourly_rate as tutor_rate,
+      -- Course Tutor Information (for course bookings)
+      ctu.name as course_tutor_name, ctu.email as course_tutor_email,
+      ct.hourly_rate as course_tutor_rate,
       -- Visa-Service-Informationen
       vs.name as visa_service_name
      FROM bookings b
@@ -127,6 +133,8 @@ router.get('/', [
      LEFT JOIN schools sc ON c.school_id = sc.id
      LEFT JOIN tutors t ON b.tutor_id = t.id
      LEFT JOIN users tu ON t.user_id = tu.id
+     LEFT JOIN tutors ct ON c.tutor_id = ct.id
+     LEFT JOIN users ctu ON ct.user_id = ctu.id
      LEFT JOIN visa_services vs ON b.booking_type = 'visa'
      ${whereClause}
      ORDER BY b.created_at DESC
@@ -324,12 +332,12 @@ router.post('/', [
   const bookingResult = await query(
     `INSERT INTO bookings (
       student_id, booking_type, course_id, tutor_id, start_date, time_slot,
-      duration_minutes, total_price, currency, subject, notes, status
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      duration_minutes, total_price, currency, subject, notes, status, payment_status
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
     RETURNING *`,
     [
       student_id, booking_type, course_id, tutor_id, start_date, time_slot,
-      duration_minutes, total_price, 'EUR', subject, notes, 'confirmed'
+      duration_minutes, total_price, 'EUR', subject, notes, 'confirmed', 'paid'
     ]
   );
 

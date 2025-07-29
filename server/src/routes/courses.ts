@@ -40,9 +40,14 @@ router.get('/', [
   const searchTerm = req.query.search as string;
 
   // WHERE-Klauseln dynamisch aufbauen
-  const whereConditions: string[] = ['c.is_active = TRUE'];
+  const whereConditions: string[] = [];
   const queryParams: any[] = [];
   let paramIndex = 1;
+
+  // Only filter by is_active if no specific tutor_id is provided (for public listing)
+  if (!tutorId) {
+    whereConditions.push('c.is_active = TRUE');
+  }
 
   if (level) {
     whereConditions.push(`c.level = $${paramIndex++}`);
@@ -90,6 +95,9 @@ router.get('/', [
     paramIndex++;
   }
 
+  // Build WHERE clause
+  const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
   // Gesamtzahl der Kurse
   const countResult = await query(
     `SELECT COUNT(*) 
@@ -97,7 +105,7 @@ router.get('/', [
      LEFT JOIN schools s ON c.school_id = s.id
      LEFT JOIN tutors t ON c.tutor_id = t.id
      LEFT JOIN users u ON t.user_id = u.id
-     WHERE ${whereConditions.join(' AND ')}`,
+     ${whereClause}`,
     queryParams
   );
   const total = parseInt(countResult.rows[0].count);
@@ -117,7 +125,7 @@ router.get('/', [
      LEFT JOIN schools s ON c.school_id = s.id
      LEFT JOIN tutors t ON c.tutor_id = t.id
      LEFT JOIN users u ON t.user_id = u.id
-     WHERE ${whereConditions.join(' AND ')}
+     ${whereClause}
      ORDER BY c.start_date ASC, c.price ASC, c.title ASC
      LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
     queryParams
@@ -148,10 +156,14 @@ router.get('/:id', optionalAuth, asyncHandler(async (req: Request, res: Response
       c.*, 
       s.name as school_name, s.location as school_location, s.phone as school_phone,
       s.email as school_email, s.website as school_website, s.rating as school_rating,
-      s.image_url as school_image
+      s.image_url as school_image,
+      u.name as tutor_name, u.email as tutor_email, t.bio as tutor_bio,
+      t.hourly_rate as tutor_rate, t.rating as tutor_rating
      FROM courses c
-     JOIN schools s ON c.school_id = s.id
-     WHERE c.id = $1 AND c.is_active = TRUE AND s.is_active = TRUE`,
+     LEFT JOIN schools s ON c.school_id = s.id AND s.is_active = TRUE
+     LEFT JOIN tutors t ON c.tutor_id = t.id
+     LEFT JOIN users u ON t.user_id = u.id
+     WHERE c.id = $1 AND c.is_active = TRUE`,
     [courseId]
   );
 
@@ -161,14 +173,17 @@ router.get('/:id', optionalAuth, asyncHandler(async (req: Request, res: Response
 
   const course = result.rows[0];
 
-  // Ähnliche Kurse abrufen
+  // Ähnliche Kurse abrufen (both school and tutor courses)
   const similarResult = await query(
     `SELECT 
       c.id, c.title, c.level, c.price, c.duration_weeks, c.start_date,
-      s.name as school_name, s.location as school_location
+      s.name as school_name, s.location as school_location,
+      u.name as tutor_name
      FROM courses c
-     JOIN schools s ON c.school_id = s.id
-     WHERE c.level = $1 AND c.id != $2 AND c.is_active = TRUE AND s.is_active = TRUE
+     LEFT JOIN schools s ON c.school_id = s.id AND s.is_active = TRUE
+     LEFT JOIN tutors t ON c.tutor_id = t.id
+     LEFT JOIN users u ON t.user_id = u.id
+     WHERE c.level = $1 AND c.id != $2 AND c.is_active = TRUE
      ORDER BY c.start_date ASC
      LIMIT 5`,
     [course.level, courseId]
@@ -273,6 +288,7 @@ router.post('/tutor', [
   body('end_date').optional().isISO8601(),
   body('is_online').optional().isBoolean(),
   body('description').optional().isString(),
+  body('is_active').optional().isBoolean(),
 ], asyncHandler(async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -281,7 +297,7 @@ router.post('/tutor', [
 
   const {
     title, level, category, price, duration_weeks, hours_per_week, max_students,
-    start_date, end_date, is_online, description
+    start_date, end_date, is_online, description, is_active
   } = req.body;
 
   // Find the tutor's ID for the logged-in user
@@ -302,11 +318,11 @@ router.post('/tutor', [
     `INSERT INTO courses (
       title, level, category, price, duration_weeks, hours_per_week, max_students,
       start_date, end_date, is_online, description, tutor_id, is_active, currency
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, TRUE, 'MAD')
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'MAD')
     RETURNING *`,
     [
       title, level, category, price, duration_weeks || 1, hours_per_week || 1, max_students || 1,
-      start_date, end_date, is_online ?? true, description || '', tutorId
+      start_date, end_date, is_online ?? true, description || '', tutorId, is_active !== undefined ? is_active : true
     ]
   );
 
@@ -488,9 +504,9 @@ router.delete('/tutor/:id', [
     throw new AppError('Kurs kann nicht gelöscht werden. Es existieren aktive Buchungen.', 409);
   }
 
-  // Soft delete the course
+  // Hard delete the course
   await query(
-    'UPDATE courses SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+    'DELETE FROM courses WHERE id = $1',
     [courseId]
   );
 
@@ -639,6 +655,265 @@ router.patch('/:id/status', [
 
   res.json({
     message: `Kurs ${is_active ? 'aktiviert' : 'deaktiviert'}`,
+    course: updatedResult.rows[0]
+  });
+}));
+
+// Tutor course status toggle
+router.patch('/tutor/:id/toggle-status', [
+  authenticateToken,
+  requireTutorOrAdmin,
+  body('is_active')
+    .isBoolean()
+    .withMessage('Status muss ein Boolean sein')
+], asyncHandler(async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw validationError('Eingabedaten sind ungültig');
+  }
+
+  const courseId = parseInt(req.params.id);
+  if (isNaN(courseId)) {
+    throw validationError('Ungültige Kurs-ID');
+  }
+
+  const { is_active } = req.body;
+
+  // First, get the tutor's ID for the authenticated user
+  const tutorResult = await query(
+    'SELECT id FROM tutors WHERE user_id = $1',
+    [req.user!.id]
+  );
+
+  if (tutorResult.rows.length === 0) {
+    throw new AppError('Tutor-Profil nicht gefunden', 404);
+  }
+
+  const tutorId = tutorResult.rows[0].id;
+
+  // Verify this course belongs to the authenticated tutor
+  const courseResult = await query(
+    `SELECT id, title, is_active FROM courses WHERE id = $1 AND tutor_id = $2`,
+    [courseId, tutorId]
+  );
+
+  if (courseResult.rows.length === 0) {
+    throw new AppError('Kurs nicht gefunden oder keine Berechtigung', 404);
+  }
+
+  // Check for active bookings when trying to deactivate
+  if (!is_active) {
+    const activeBookings = await query(
+      'SELECT COUNT(*) FROM bookings WHERE course_id = $1 AND status IN ($2, $3)',
+      [courseId, 'pending', 'confirmed']
+    );
+    if (parseInt(activeBookings.rows[0].count) > 0) {
+      throw new AppError('Kurs kann nicht deaktiviert werden. Es existieren aktive Buchungen.', 409);
+    }
+  }
+
+  // Update the course status
+  await query(
+    'UPDATE courses SET is_active = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+    [is_active, courseId]
+  );
+
+  // Get the updated course
+  const updatedResult = await query(
+    'SELECT * FROM courses WHERE id = $1',
+    [courseId]
+  );
+
+  res.json({
+    message: `Kurs ${is_active ? 'aktiviert' : 'deaktiviert'}`,
+    course: updatedResult.rows[0]
+  });
+}));
+
+// Check if course has active bookings
+router.get('/tutor/:id/has-bookings', [
+  authenticateToken,
+  requireTutorOrAdmin
+], asyncHandler(async (req: Request, res: Response) => {
+  const courseId = parseInt(req.params.id);
+  if (isNaN(courseId)) {
+    throw validationError('Ungültige Kurs-ID');
+  }
+
+  // First, get the tutor's ID for the authenticated user
+  const tutorResult = await query(
+    'SELECT id FROM tutors WHERE user_id = $1',
+    [req.user!.id]
+  );
+
+  if (tutorResult.rows.length === 0) {
+    throw new AppError('Tutor-Profil nicht gefunden', 404);
+  }
+
+  const tutorId = tutorResult.rows[0].id;
+
+  // Verify this course belongs to the authenticated tutor
+  const courseResult = await query(
+    'SELECT id FROM courses WHERE id = $1 AND tutor_id = $2',
+    [courseId, tutorId]
+  );
+
+  if (courseResult.rows.length === 0) {
+    throw new AppError('Kurs nicht gefunden oder keine Berechtigung', 404);
+  }
+
+  // Check for active bookings
+  const activeBookings = await query(
+    'SELECT COUNT(*) FROM bookings WHERE course_id = $1 AND status IN ($2, $3)',
+    [courseId, 'pending', 'confirmed']
+  );
+
+  const hasActiveBookings = parseInt(activeBookings.rows[0].count) > 0;
+
+  res.json({
+    hasActiveBookings,
+    bookingCount: parseInt(activeBookings.rows[0].count)
+  });
+}));
+
+// Tutor update course
+router.put('/tutor/:id', [
+  authenticateToken,
+  requireTutorOrAdmin,
+  body('title')
+    .trim()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('Titel muss zwischen 1 und 100 Zeichen lang sein'),
+  body('description')
+    .optional()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage('Beschreibung zu lang'),
+  body('level')
+    .isIn(['A1', 'A2', 'B1', 'B2', 'C1', 'C2'])
+    .withMessage('Ungültiges Level'),
+  body('category')
+    .isIn(['general', 'business', 'exam_prep', 'conversation'])
+    .withMessage('Ungültige Kategorie'),
+  body('price')
+    .isFloat({ min: 0 })
+    .withMessage('Preis muss eine positive Zahl sein'),
+  body('duration_weeks')
+    .optional()
+    .isInt({ min: 1, max: 52 })
+    .withMessage('Dauer muss zwischen 1 und 52 Wochen sein'),
+  body('hours_per_week')
+    .optional()
+    .isFloat({ min: 0.5, max: 40 })
+    .withMessage('Stunden pro Woche müssen zwischen 0.5 und 40 sein'),
+  body('max_students')
+    .optional()
+    .isInt({ min: 1, max: 100 })
+    .withMessage('Maximale Studentenzahl muss zwischen 1 und 100 sein'),
+  body('start_date')
+    .optional()
+    .isISO8601()
+    .withMessage('Ungültiges Startdatum'),
+  body('end_date')
+    .optional()
+    .isISO8601()
+    .withMessage('Ungültiges Enddatum'),
+  body('is_online')
+    .isBoolean()
+    .withMessage('Online-Status muss ein Boolean sein'),
+  body('is_active')
+    .isBoolean()
+    .withMessage('Aktiv-Status muss ein Boolean sein')
+], asyncHandler(async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw validationError('Eingabedaten sind ungültig');
+  }
+
+  const courseId = parseInt(req.params.id);
+  if (isNaN(courseId)) {
+    throw validationError('Ungültige Kurs-ID');
+  }
+
+  const {
+    title,
+    description,
+    level,
+    category,
+    price,
+    duration_weeks,
+    hours_per_week,
+    max_students,
+    start_date,
+    end_date,
+    is_online,
+    is_active
+  } = req.body;
+
+  // First, get the tutor's ID for the authenticated user
+  const tutorResult = await query(
+    'SELECT id FROM tutors WHERE user_id = $1',
+    [req.user!.id]
+  );
+
+  if (tutorResult.rows.length === 0) {
+    throw new AppError('Tutor-Profil nicht gefunden', 404);
+  }
+
+  const tutorId = tutorResult.rows[0].id;
+
+  // Verify this course belongs to the authenticated tutor
+  const courseResult = await query(
+    `SELECT id, title FROM courses WHERE id = $1 AND tutor_id = $2`,
+    [courseId, tutorId]
+  );
+
+  if (courseResult.rows.length === 0) {
+    throw new AppError('Kurs nicht gefunden oder keine Berechtigung', 404);
+  }
+
+  // Update the course
+  await query(
+    `UPDATE courses SET 
+      title = $1,
+      description = $2,
+      level = $3,
+      category = $4,
+      price = $5,
+      duration_weeks = $6,
+      hours_per_week = $7,
+      max_students = $8,
+      start_date = $9,
+      end_date = $10,
+      is_online = $11,
+      is_active = $12,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = $13`,
+    [
+      title,
+      description,
+      level,
+      category,
+      price,
+      duration_weeks,
+      hours_per_week,
+      max_students,
+      start_date,
+      end_date,
+      is_online,
+      is_active,
+      courseId
+    ]
+  );
+
+  // Get the updated course
+  const updatedResult = await query(
+    'SELECT * FROM courses WHERE id = $1',
+    [courseId]
+  );
+
+  res.json({
+    message: 'Kurs erfolgreich aktualisiert',
     course: updatedResult.rows[0]
   });
 }));

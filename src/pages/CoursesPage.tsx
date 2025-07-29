@@ -80,6 +80,25 @@ export default function CoursesPage() {
     return schools.find(school => school.id === schoolId)
   }
 
+  const getProviderInfo = (course: Course) => {
+    if (course.tutor_id && course.tutor_name) {
+      return {
+        name: course.tutor_name,
+        rating: course.tutor_rating || 0,
+        type: 'tutor'
+      }
+    }
+    if (course.school_id) {
+      const school = getSchoolInfo(course.school_id)
+      return school ? {
+        name: school.name,
+        rating: school.rating,
+        type: 'school'
+      } : null
+    }
+    return null
+  }
+
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }))
   }
@@ -259,7 +278,7 @@ export default function CoursesPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {(filteredCourses || []).map(course => {
-                const school = getSchoolInfo(course.school_id)
+                const provider = getProviderInfo(course)
                 return (
                   <div key={course.id} className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                     {course.image_url && (
@@ -275,10 +294,10 @@ export default function CoursesPage() {
                           {course.level}
                         </span>
                         <div className="flex items-center text-sm text-gray-500">
-                          {school && (
+                          {provider && (
                             <>
                               <Star className="w-4 h-4 text-yellow-400 fill-current mr-1" />
-                              <span>{school.rating}</span>
+                              <span>{provider.rating}</span>
                             </>
                           )}
                         </div>
@@ -288,8 +307,15 @@ export default function CoursesPage() {
                         {course.title}
                       </h3>
                       
-                      {school && (
-                        <p className="text-sm text-gray-600 mb-3">{school.name}</p>
+                      {provider && (
+                        <p className="text-sm text-gray-600 mb-3">
+                          {provider.name}
+                          {provider.type === 'tutor' && (
+                            <span className="ml-2 inline-block bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-0.5 rounded">
+                              Privatlehrer
+                            </span>
+                          )}
+                        </p>
                       )}
                       
                       <p className="text-gray-600 mb-4 line-clamp-2">
@@ -299,7 +325,7 @@ export default function CoursesPage() {
                       <div className="space-y-2 mb-4">
                         <div className="flex items-center text-sm text-gray-600">
                           <MapPin className="w-4 h-4 mr-2" />
-                          <span>{course.school_location}</span>
+                          <span>{course.school_location || course.tutor_name || 'Online'}</span>
                         </div>
                         <div className="flex items-center text-sm text-gray-600">
                           <Clock className="w-4 h-4 mr-2" />
